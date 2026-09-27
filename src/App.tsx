@@ -76,6 +76,12 @@ function normalizeKey(key: string) {
   return key.length === 1 ? key.toLowerCase() : key
 }
 
+function formatTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
 function Keyboard({ targetKey, pressedKey, status }: { targetKey: string; pressedKey: string | null; status: DrillStatus }) {
   return (
     <div className="keyboard-scroll">
@@ -129,6 +135,8 @@ export default function App() {
   const [status, setStatus] = useState<DrillStatus>('ready')
   const [pressedKey, setPressedKey] = useState<string | null>(null)
   const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  const [keystrokes, setKeystrokes] = useState(0)
   const [secondsLeft, setSecondsLeft] = useState(30)
   const [showGuides, setShowGuides] = useState(true)
   const practiceRef = useRef<HTMLElement>(null)
@@ -138,12 +146,14 @@ export default function App() {
   const isComplete = status === 'complete'
   const targetKey = isTypingDrill && !isComplete ? activeDrill.content[position] ?? '' : ''
   const activeFinger = isTypingDrill && !isComplete ? fingerMap[targetKey] ?? 'right-thumb' : null
-  const elapsedSeconds = activeDrill.timeLimit ? Math.max(1, activeDrill.timeLimit - secondsLeft) : 0
-  const wpm = activeDrill.timeLimit ? Math.round((position / 5) / (elapsedSeconds / 60)) : 0
-  const accuracy = position + mistakes === 0 ? 100 : Math.round((position / (position + mistakes)) * 100)
+  const timeUsed = startedAt === null || finishedAt === null ? 0 : Math.max(1, Math.round((finishedAt - startedAt) / 1000))
+  const minutesUsed = Math.max(timeUsed / 60, 1 / 60)
+  const grossSpeed = Math.round((keystrokes / 5) / minutesUsed)
+  const accuracy = keystrokes === 0 ? 100 : Math.max(0, Math.round(((keystrokes - mistakes) / keystrokes) * 100))
+  const netSpeed = Math.max(0, Math.round(grossSpeed - mistakes / minutesUsed))
 
   const resetProgress = useCallback((drill: Drill) => {
-    setPosition(0); setMistakes(0); setStatus('ready'); setPressedKey(null); setStartedAt(null); setSecondsLeft(drill.timeLimit ?? 30)
+    setPosition(0); setMistakes(0); setKeystrokes(0); setStatus('ready'); setPressedKey(null); setStartedAt(null); setFinishedAt(null); setSecondsLeft(drill.timeLimit ?? 30)
   }, [])
 
   const restart = useCallback(() => {
@@ -159,7 +169,7 @@ export default function App() {
   }, [resetProgress])
 
   const completeDrill = useCallback(() => {
-    setStatus('complete'); setPressedKey(null); setCompletedDrills((current) => new Set(current).add(activeDrillId))
+    setStatus('complete'); setPressedKey(null); setFinishedAt((current) => current ?? Date.now()); setCompletedDrills((current) => new Set(current).add(activeDrillId))
   }, [activeDrillId])
 
   const startKeyDrill = () => {
@@ -204,7 +214,8 @@ export default function App() {
     }
     if (key.length !== 1) return
     event.preventDefault(); setPressedKey(key)
-    if (activeDrill.timeLimit && startedAt === null) setStartedAt(Date.now())
+    if (startedAt === null) setStartedAt(Date.now())
+    setKeystrokes((current) => current + 1)
     if (key === targetKey) {
       const nextPosition = position + 1
       setPosition(nextPosition)
@@ -292,11 +303,8 @@ export default function App() {
                 <div className="typing-workspace">
                   <section aria-label={`${activeDrill.name}: ${activeDrill.title}`} className={`typing-card status-${status} ${activeDrill.content.length > 60 ? 'long-content' : ''}`} onClick={() => practiceRef.current?.focus()} onKeyDown={handleKeyDown} onKeyUp={() => setPressedKey(null)} ref={practiceRef} tabIndex={0}>
                     {isComplete ? (
-                      <div className="completion">
-                        <div className="completion-copy"><span className="completion-icon" aria-hidden="true">✓</span><strong>Hoàn thành {activeDrill.name}</strong>
-                          {activeDrill.timeLimit ? <span className="result-metrics"><span><strong>{wpm}</strong> WPM</span><span><strong>{accuracy}%</strong> chính xác</span><span><strong>{mistakes}</strong> lỗi</span></span> : <small>Bạn có thể luyện lại hoặc chuyển sang bài tiếp theo.</small>}
-                        </div>
-                        <div className="completion-actions"><button className="secondary-button" type="button" onClick={restart}>Luyện lại</button><button className="primary-button" type="button" onClick={goToNextDrill}>{activeDrillId < 6 ? 'Bài tiếp theo' : 'Về lesson'}</button></div>
+                      <div className="completion" role="status" aria-live="polite">
+                        <div className="completion-copy"><span className="completion-icon" aria-hidden="true">✓</span><strong>Hoàn thành {activeDrill.name}</strong><small>Kết quả đã sẵn sàng ở bảng bên phải.</small></div>
                       </div>
                     ) : (
                       <div className={`typing-line ${activeDrill.content.length > 60 ? 'compact' : ''}`} aria-label={`Nội dung cần gõ: ${activeDrill.content}`}>
@@ -336,12 +344,32 @@ export default function App() {
           )}
         </main>
 
-        <aside className="program-nav" aria-label="Menu chương trình">
+        <aside className={`program-nav ${screen === 'drill' ? 'drill-mode' : ''}`} aria-label="Menu chương trình">
           <div className="rail-heading"><span className="rail-logo" aria-hidden="true">T</span><span><strong>Typing Speed</strong><small>VN</small></span></div>
-          <nav>
-            <button className={screen === 'settings' ? 'active' : ''} type="button" onClick={() => setScreen('settings')}><span aria-hidden="true">⚙</span>Settings</button>
-            <button className={screen === 'about' ? 'active' : ''} type="button" onClick={() => setScreen('about')}><span aria-hidden="true">i</span>About</button>
-          </nav>
+          {screen === 'drill' ? (
+            <>
+              {isTypingDrill && isComplete && (
+                <section className="drill-results" aria-label="Kết quả bài luyện">
+                  <h2>Result</h2>
+                  <dl>
+                    <div><dt>Time Used</dt><dd>{formatTime(timeUsed)}</dd></div>
+                    <div><dt>Gross Speed</dt><dd>{grossSpeed} WPM</dd></div>
+                    <div><dt>Accuracy</dt><dd>{accuracy}%</dd></div>
+                    <div><dt>Net Speed</dt><dd>{netSpeed} WPM</dd></div>
+                  </dl>
+                </section>
+              )}
+              <nav className="drill-nav" aria-label="Điều khiển bài luyện">
+                <button className="next-button" disabled={!isComplete} type="button" onClick={goToNextDrill}>Next</button>
+                <button className="cancel-button" type="button" onClick={openLesson}>Cancel</button>
+              </nav>
+            </>
+          ) : (
+            <nav>
+              <button className={screen === 'settings' ? 'active' : ''} type="button" onClick={() => setScreen('settings')}><span aria-hidden="true">⚙</span>Settings</button>
+              <button className={screen === 'about' ? 'active' : ''} type="button" onClick={() => setScreen('about')}><span aria-hidden="true">i</span>About</button>
+            </nav>
+          )}
         </aside>
       </div>
     </div>
