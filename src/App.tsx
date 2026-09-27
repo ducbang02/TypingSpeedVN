@@ -113,7 +113,7 @@ function Hands({ activeFinger }: { activeFinger: FingerId | null }) {
             <span aria-label={fingerLabels[finger]} className={`finger finger-${finger} finger-${index + 1} ${activeFinger === finger ? 'active' : ''}`} key={finger} role="img" />
           ))}
         </div>
-        <div className="palm"><span>{side === 'left' ? 'L' : 'R'}</span></div>
+        <div className="palm" />
       </div>
     )
   }
@@ -221,10 +221,6 @@ export default function App() {
     else setScreen('lesson')
   }
 
-  const statusMessage = status === 'incorrect' ? `Chưa đúng — hãy nhấn ${keyLabel(targetKey)}`
-    : status === 'complete' ? activeDrill.timeLimit && secondsLeft === 0 ? 'Hết giờ!' : 'Hoàn thành bài luyện!'
-      : status === 'correct' ? 'Chính xác'
-        : activeDrill.timeLimit && startedAt === null ? 'Gõ để bắt đầu' : 'Sẵn sàng luyện tập'
   const openLesson = () => setScreen('lesson')
 
   return (
@@ -276,34 +272,29 @@ export default function App() {
 
           {screen === 'drill' && (
             <section className="drill-screen" aria-labelledby="drill-title">
-              <div className="drill-toolbar"><button className="back-button" type="button" onClick={openLesson}>← Lesson 1</button><span>{activeDrill.name} · {activeDrill.id} of 6</span></div>
-              <div className="practice-heading">
-                <div><p className="eyebrow">{activeDrill.name}</p><h1 id="drill-title">{activeDrill.title}</h1></div>
-                {isTypingDrill && (
-                  <div className="metric-group">
-                    {activeDrill.timeLimit && <div className={`timer-box ${startedAt !== null && !isComplete ? 'running' : ''}`} aria-label={`${secondsLeft} giây còn lại`}><span>Time</span><strong>{secondsLeft}s</strong></div>}
-                    <div className="progress-box" aria-label={`${position} trên ${activeDrill.content.length} ký tự`}><span>Progress</span><strong>{position}/{activeDrill.content.length}</strong></div>
-                  </div>
+              <div className="typing-title-row">
+                <h1 id="drill-title">Lesson 1: {activeDrill.name}</h1>
+                {activeDrill.timeLimit && (
+                  <time aria-label={`${secondsLeft} giây còn lại`}>00:{String(secondsLeft).padStart(2, '0')}</time>
                 )}
               </div>
 
               {activeDrill.id === 1 ? (
                 <div className="new-keys-layout">
-                  <div className="intro-copy"><span className="play-dot" aria-hidden="true">▶</span><p>{activeDrill.hint}. Hai phím <strong>F</strong> và <strong>J</strong> có gờ nhỏ để bạn tìm lại vị trí mà không cần nhìn xuống.</p></div>
+                  <div className="intro-copy"><p>Đặt các ngón tay lên <strong>A S D F</strong> và <strong>J K L ;</strong>. Hai phím <strong>F</strong> và <strong>J</strong> có gờ nhỏ để tìm lại vị trí mà không cần nhìn xuống.</p></div>
                   <div className="home-row-grid" aria-label="Các phím mới và ngón tay tương ứng">
                     {homeRowKeys.map((item) => <div className={`home-key finger-${item.finger}`} key={item.key}><strong>{item.key}</strong><span>{item.label}</span></div>)}
                   </div>
-                  {showGuides && <div className="intro-guide"><Hands activeFinger={null} /><Keyboard pressedKey={null} status="ready" targetKey="" /></div>}
+                  {showGuides && <div className="intro-guide"><Keyboard pressedKey={null} status="ready" targetKey="" /><Hands activeFinger={null} /></div>}
                   <div className="intro-actions"><button className="primary-button" type="button" onClick={startKeyDrill}>Bắt đầu Key Drill →</button></div>
                 </div>
               ) : (
-                <>
-                  <section aria-describedby="typing-instructions" aria-label={`${activeDrill.name}: ${activeDrill.title}`} className={`typing-card status-${status} ${activeDrill.content.length > 60 ? 'long-content' : ''}`} onClick={() => practiceRef.current?.focus()} onKeyDown={handleKeyDown} onKeyUp={() => setPressedKey(null)} ref={practiceRef} tabIndex={0}>
-                    <div className="typing-meta"><p className="hint" id="typing-instructions"><span aria-hidden="true">▶</span>{activeDrill.hint} · Backspace để quay lại</p><span className={`feedback ${status}`} role="status" aria-live="polite">{statusMessage}</span></div>
+                <div className="typing-workspace">
+                  <section aria-label={`${activeDrill.name}: ${activeDrill.title}`} className={`typing-card status-${status} ${activeDrill.content.length > 60 ? 'long-content' : ''}`} onClick={() => practiceRef.current?.focus()} onKeyDown={handleKeyDown} onKeyUp={() => setPressedKey(null)} ref={practiceRef} tabIndex={0}>
                     {isComplete ? (
                       <div className="completion">
-                        <div className="completion-copy"><span className="completion-icon" aria-hidden="true">✓</span><strong>{activeDrill.timeLimit ? 'Speed test complete!' : 'Great work!'}</strong>
-                          {activeDrill.timeLimit ? <span className="result-metrics"><span><strong>{wpm}</strong> WPM</span><span><strong>{accuracy}%</strong> chính xác</span><span><strong>{mistakes}</strong> lỗi</span></span> : <small>Bạn đã hoàn thành {activeDrill.name} với {mistakes} lỗi.</small>}
+                        <div className="completion-copy"><span className="completion-icon" aria-hidden="true">✓</span><strong>Hoàn thành {activeDrill.name}</strong>
+                          {activeDrill.timeLimit ? <span className="result-metrics"><span><strong>{wpm}</strong> WPM</span><span><strong>{accuracy}%</strong> chính xác</span><span><strong>{mistakes}</strong> lỗi</span></span> : <small>Bạn có thể luyện lại hoặc chuyển sang bài tiếp theo.</small>}
                         </div>
                         <div className="completion-actions"><button className="secondary-button" type="button" onClick={restart}>Luyện lại</button><button className="primary-button" type="button" onClick={goToNextDrill}>{activeDrillId < 6 ? 'Bài tiếp theo' : 'Về lesson'}</button></div>
                       </div>
@@ -314,13 +305,12 @@ export default function App() {
                     )}
                   </section>
                   {showGuides && (
-                    <section className="guide-card" aria-label="Hướng dẫn bàn phím và ngón tay">
-                      <div className="instruction-rail"><div className="next-key"><span>Phím tiếp theo</span><strong className={activeFinger ? `finger-${activeFinger}` : ''}>{isComplete ? '✓' : keyLabel(targetKey)}</strong><small>{isComplete ? 'Bài đã xong' : fingerLabels[activeFinger!]}</small></div><Hands activeFinger={activeFinger} /></div>
+                    <section className="guide-card" aria-label="Bàn phím và vị trí bàn tay">
                       <Keyboard pressedKey={pressedKey} status={status} targetKey={targetKey} />
+                      <Hands activeFinger={activeFinger} />
                     </section>
                   )}
-                  <div className="practice-footer"><span>{mistakes} lỗi · {accuracy}% chính xác</span><button type="button" onClick={restart}>Bắt đầu lại</button></div>
-                </>
+                </div>
               )}
             </section>
           )}
@@ -348,7 +338,6 @@ export default function App() {
 
         <aside className="program-nav" aria-label="Menu chương trình">
           <div className="rail-heading"><span className="rail-logo" aria-hidden="true">T</span><span><strong>Typing Speed</strong><small>VN</small></span></div>
-          <div className="rail-course"><small>Current course</small><button type="button" onClick={openLesson}>Lesson 1<strong>Home Row</strong></button></div>
           <nav>
             <button className={screen === 'settings' ? 'active' : ''} type="button" onClick={() => setScreen('settings')}><span aria-hidden="true">⚙</span>Settings</button>
             <button className={screen === 'about' ? 'active' : ''} type="button" onClick={() => setScreen('about')}><span aria-hidden="true">i</span>About</button>
