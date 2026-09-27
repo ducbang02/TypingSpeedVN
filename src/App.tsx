@@ -13,6 +13,16 @@ type FingerId =
   | 'right-pinky'
 
 type DrillStatus = 'ready' | 'correct' | 'incorrect' | 'complete'
+type DrillId = 2 | 3 | 4 | 5 | 6
+
+type Drill = {
+  id: DrillId
+  name: string
+  title: string
+  hint: string
+  content: string
+  timeLimit?: number
+}
 
 type ModelContext = {
   registerTool: (
@@ -34,9 +44,44 @@ declare global {
   }
 }
 
-const DRILL_TEXT = 'asdf jkl; asdf jkl;'
-
-const drills = ['New Keys', 'Key Drill', 'Word Drill', 'Sentence Drill', 'Paragraph Drill', 'Speed Test']
+const drills: Drill[] = [
+  {
+    id: 2,
+    name: 'Key Drill',
+    title: 'Keep your fingers on the home row',
+    hint: 'Lặp lại từng phím để ghi nhớ vị trí',
+    content: 'asdf jkl; asdf jkl;',
+  },
+  {
+    id: 3,
+    name: 'Word Drill',
+    title: 'Build words with home-row keys',
+    hint: 'Gõ từng từ, giữ tay ở hàng cơ sở',
+    content: 'sad dad all fall ask flask salad lass; sad dad fall ask;',
+  },
+  {
+    id: 4,
+    name: 'Sentence Drill',
+    title: 'Connect words into short sentences',
+    hint: 'Giữ nhịp đều khi chuyển giữa các từ',
+    content: 'a lad asks a dad; a sad lass falls; a dad asks a lad;',
+  },
+  {
+    id: 5,
+    name: 'Paragraph Drill',
+    title: 'Type a full home-row paragraph',
+    hint: 'Ưu tiên độ chính xác trước tốc độ',
+    content: 'a lad asks a dad; a sad lass falls; a dad adds salad; a flask falls; a lass asks a lad; all dads add salad;',
+  },
+  {
+    id: 6,
+    name: 'Speed Test',
+    title: 'Thirty-second home-row test',
+    hint: 'Đồng hồ bắt đầu khi bạn gõ ký tự đầu tiên',
+    content: 'asdf jkl; sad dad fall ask; flask salad lass all; a lad asks a dad; a sad lass falls; asdf jkl; dad adds salad; a flask falls;',
+    timeLimit: 30,
+  },
+]
 
 const lessons = [
   { number: '01', title: 'Home Row', note: 'Đang học' },
@@ -143,27 +188,79 @@ function Hands({ activeFinger }: { activeFinger: FingerId | null }) {
 }
 
 export default function App() {
+  const [activeDrillId, setActiveDrillId] = useState<DrillId>(2)
+  const [completedDrills, setCompletedDrills] = useState<Set<number>>(() => new Set([1]))
   const [position, setPosition] = useState(0)
   const [mistakes, setMistakes] = useState(0)
   const [status, setStatus] = useState<DrillStatus>('ready')
   const [pressedKey, setPressedKey] = useState<string | null>(null)
+  const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [secondsLeft, setSecondsLeft] = useState(30)
   const practiceRef = useRef<HTMLElement>(null)
 
-  const isComplete = position === DRILL_TEXT.length
-  const targetKey = isComplete ? '' : DRILL_TEXT[position]
+  const activeDrill = drills.find((drill) => drill.id === activeDrillId) ?? drills[0]
+  const isComplete = status === 'complete'
+  const targetKey = isComplete ? '' : activeDrill.content[position] ?? ''
   const activeFinger = isComplete ? null : fingerMap[targetKey] ?? 'right-thumb'
+  const elapsedSeconds = activeDrill.timeLimit
+    ? Math.max(1, activeDrill.timeLimit - secondsLeft)
+    : 0
+  const wpm = activeDrill.timeLimit
+    ? Math.round((position / 5) / (elapsedSeconds / 60))
+    : 0
+  const accuracy = position + mistakes === 0
+    ? 100
+    : Math.round((position / (position + mistakes)) * 100)
 
-  const restart = useCallback(() => {
+  const resetProgress = useCallback((drill: Drill) => {
     setPosition(0)
     setMistakes(0)
     setStatus('ready')
     setPressedKey(null)
+    setStartedAt(null)
+    setSecondsLeft(drill.timeLimit ?? 30)
     requestAnimationFrame(() => practiceRef.current?.focus())
   }, [])
+
+  const restart = useCallback(() => {
+    resetProgress(activeDrill)
+  }, [activeDrill, resetProgress])
+
+  const selectDrill = useCallback((drillId: DrillId) => {
+    const drill = drills.find((item) => item.id === drillId)
+    if (!drill) return
+    setActiveDrillId(drillId)
+    resetProgress(drill)
+  }, [resetProgress])
+
+  const completeDrill = useCallback(() => {
+    setStatus('complete')
+    setPressedKey(null)
+    setCompletedDrills((current) => {
+      const next = new Set(current)
+      next.add(activeDrillId)
+      return next
+    })
+  }, [activeDrillId])
 
   useEffect(() => {
     practiceRef.current?.focus()
   }, [])
+
+  useEffect(() => {
+    if (!activeDrill.timeLimit || startedAt === null || isComplete) return
+
+    const updateTimer = () => {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
+      const remaining = Math.max(activeDrill.timeLimit! - elapsed, 0)
+      setSecondsLeft(remaining)
+      if (remaining === 0) completeDrill()
+    }
+
+    updateTimer()
+    const interval = window.setInterval(updateTimer, 250)
+    return () => window.clearInterval(interval)
+  }, [activeDrill.timeLimit, completeDrill, isComplete, startedAt])
 
   useEffect(() => {
     const context = document.modelContext
@@ -173,17 +270,17 @@ export default function App() {
     void Promise.resolve(context.registerTool({
       name: 'restart_typing_drill',
       title: 'Restart typing drill',
-      description: 'Reset the current typing drill, mistakes, and progress to the beginning.',
+      description: 'Reset the active typing drill, mistakes, timer, and progress.',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       execute: () => {
         restart()
-        return { status: 'restarted', position: 0, mistakes: 0 }
+        return { status: 'restarted', drillId: activeDrillId, position: 0, mistakes: 0 }
       },
     }, { signal: lifecycle.signal })).catch(() => undefined)
 
     return () => lifecycle.abort()
-  }, [restart])
+  }, [activeDrillId, restart])
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (event.ctrlKey || event.altKey || event.metaKey || isComplete) return
@@ -201,23 +298,31 @@ export default function App() {
 
     event.preventDefault()
     setPressedKey(key)
+    if (activeDrill.timeLimit && startedAt === null) setStartedAt(Date.now())
+
     if (key === targetKey) {
       const nextPosition = position + 1
       setPosition(nextPosition)
-      setStatus(nextPosition === DRILL_TEXT.length ? 'complete' : 'correct')
+      if (nextPosition === activeDrill.content.length) completeDrill()
+      else setStatus('correct')
     } else {
       setMistakes((current) => current + 1)
       setStatus('incorrect')
     }
   }
 
+  const goToNextDrill = () => {
+    const nextDrill = drills.find((drill) => drill.id === activeDrillId + 1)
+    if (nextDrill) selectDrill(nextDrill.id)
+  }
+
   const statusMessage = status === 'incorrect'
     ? `Chưa đúng — hãy nhấn ${keyLabel(targetKey)}`
     : status === 'complete'
-      ? 'Hoàn thành bài luyện!'
+      ? activeDrill.timeLimit && secondsLeft === 0 ? 'Hết giờ!' : 'Hoàn thành bài luyện!'
       : status === 'correct'
         ? 'Chính xác'
-        : 'Sẵn sàng luyện tập'
+        : activeDrill.timeLimit && startedAt === null ? 'Gõ để bắt đầu' : 'Sẵn sàng luyện tập'
 
   return (
     <div className="app-shell">
@@ -250,31 +355,55 @@ export default function App() {
             <strong>Home Row Foundations</strong>
           </div>
           <ol className="drill-list">
-            {drills.map((drill, index) => (
-              <li className={index === 1 ? 'active' : index === 0 ? 'done' : ''} key={drill}>
-                <span>{index === 0 ? '✓' : index + 1}</span>
-                <span>{drill}</span>
-                <small>{index === 0 ? 'Done' : index === 1 ? 'Now' : 'Later'}</small>
-              </li>
-            ))}
+            <li className="done">
+              <span>✓</span>
+              <span>New Keys</span>
+              <small>Done</small>
+            </li>
+            {drills.map((drill) => {
+              const isActive = drill.id === activeDrillId
+              const isDone = completedDrills.has(drill.id)
+              return (
+                <li className={isActive ? 'active' : isDone ? 'done' : ''} key={drill.id}>
+                  <button
+                    aria-current={isActive ? 'step' : undefined}
+                    className="drill-button"
+                    onClick={() => selectDrill(drill.id)}
+                    type="button"
+                  >
+                    <span>{isDone ? '✓' : drill.id}</span>
+                    <span>{drill.name}</span>
+                    <small>{isActive ? 'Now' : isDone ? 'Done' : 'Ready'}</small>
+                  </button>
+                </li>
+              )
+            })}
           </ol>
         </aside>
 
         <main className="practice-panel">
           <div className="practice-heading">
             <div>
-              <p className="eyebrow">Key Drill · 2 of 6</p>
-              <h2>Keep your fingers on the home row</h2>
+              <p className="eyebrow">{activeDrill.name} · {activeDrill.id} of 6</p>
+              <h2>{activeDrill.title}</h2>
             </div>
-            <div className="progress-pill" aria-label={`${position} trên ${DRILL_TEXT.length} ký tự`}>
-              <strong>{position}</strong> / {DRILL_TEXT.length}
+            <div className="metric-group">
+              {activeDrill.timeLimit && (
+                <div className={`timer-pill ${startedAt !== null && !isComplete ? 'running' : ''}`} aria-label={`${secondsLeft} giây còn lại`}>
+                  <span>Time</span>
+                  <strong>{secondsLeft}s</strong>
+                </div>
+              )}
+              <div className="progress-pill" aria-label={`${position} trên ${activeDrill.content.length} ký tự`}>
+                <strong>{position}</strong> / {activeDrill.content.length}
+              </div>
             </div>
           </div>
 
           <section
             aria-describedby="typing-instructions"
-            aria-label="Bài luyện gõ mẫu"
-            className={`typing-card status-${status}`}
+            aria-label={`${activeDrill.name}: ${activeDrill.title}`}
+            className={`typing-card status-${status} ${activeDrill.content.length > 60 ? 'long-content' : ''}`}
             onClick={() => practiceRef.current?.focus()}
             onKeyDown={handleKeyDown}
             onKeyUp={() => setPressedKey(null)}
@@ -282,22 +411,33 @@ export default function App() {
             tabIndex={0}
           >
             <div className="typing-meta">
-              <p className="hint" id="typing-instructions">Gõ theo nội dung bên dưới · Backspace để quay lại</p>
+              <p className="hint" id="typing-instructions">{activeDrill.hint} · Backspace để quay lại</p>
               <span className={`feedback ${status}`} role="status" aria-live="polite">{statusMessage}</span>
             </div>
 
             {isComplete ? (
               <div className="completion">
-                <div>
+                <div className="completion-copy">
                   <span className="completion-icon" aria-hidden="true">✓</span>
-                  <strong>Great work!</strong>
-                  <small>Bạn đã hoàn thành Key Drill với {mistakes} lỗi.</small>
+                  <strong>{activeDrill.timeLimit ? 'Speed test complete!' : 'Great work!'}</strong>
+                  {activeDrill.timeLimit ? (
+                    <span className="result-metrics">
+                      <span><strong>{wpm}</strong> WPM</span>
+                      <span><strong>{accuracy}%</strong> chính xác</span>
+                      <span><strong>{mistakes}</strong> lỗi</span>
+                    </span>
+                  ) : (
+                    <small>Bạn đã hoàn thành {activeDrill.name} với {mistakes} lỗi.</small>
+                  )}
                 </div>
-                <button type="button" onClick={restart}>Luyện lại</button>
+                <div className="completion-actions">
+                  <button className="secondary-button" type="button" onClick={restart}>Luyện lại</button>
+                  {activeDrillId < 6 && <button type="button" onClick={goToNextDrill}>Bài tiếp theo</button>}
+                </div>
               </div>
             ) : (
-              <div className="typing-line" aria-label={`Nội dung cần gõ: ${DRILL_TEXT}`}>
-                {DRILL_TEXT.split('').map((character, index) => (
+              <div className={`typing-line ${activeDrill.content.length > 60 ? 'compact' : ''}`} aria-label={`Nội dung cần gõ: ${activeDrill.content}`}>
+                {activeDrill.content.split('').map((character, index) => (
                   <span className={index < position ? 'typed' : index === position ? 'current-char' : ''} key={`${character}-${index}`}>
                     {character}
                   </span>
@@ -319,7 +459,7 @@ export default function App() {
           </section>
 
           <div className="practice-footer">
-            <span>{mistakes} lỗi</span>
+            <span>{mistakes} lỗi · {accuracy}% chính xác</span>
             <button type="button" onClick={restart}>Bắt đầu lại</button>
           </div>
         </main>
