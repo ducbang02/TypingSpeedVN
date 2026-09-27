@@ -153,6 +153,13 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .program-nav .drill-nav .next-button:hover:not(:disabled) { background: var(--brand-deep); }
 .program-nav .drill-nav .next-button:disabled { border-color: #aebfd3; background: #c5d2df; color: #6d8095; cursor: not-allowed; }
 .program-nav .drill-nav .cancel-button { background: white; color: var(--brand); }
+.drill-timer { padding: 20px 16px; border-bottom: 1px solid #bed1e6; }
+.drill-timer > div { padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(98, 132, 169, .35); }
+.drill-timer strong { color: #132f50; font-size: .78rem; }
+.drill-timer button { padding: 0; border: 0; background: transparent; color: var(--brand-deep); font-size: .72rem; text-decoration: underline; }
+.drill-timer button:disabled { color: #8193a7; cursor: default; opacity: .55; }
+.drill-timer time { display: block; margin-top: 5px; color: #101820; font-size: 1.55rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.drill-timer.running time { color: var(--brand-deep); }
 .drill-results { padding: 22px 16px; border-bottom: 1px solid #bed1e6; }
 .drill-results h2 { margin: 0 0 12px; color: #193858; font-size: .86rem; font-weight: 700; }
 .drill-results dl { margin: 0; display: grid; gap: 0; }
@@ -162,7 +169,6 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 
 .typing-title-row { min-height: 48px; margin-bottom: 0; padding: 0 3px 13px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .typing-title-row h1 { font-size: clamp(1.3rem, 2.4vw, 1.7rem); }
-.typing-title-row time { color: var(--ink); font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .typing-workspace { border: 1px solid var(--line); background: white; }
 .typing-card, .guide-card { background: white; }
 .settings-card, .about-card { border: 1px solid var(--line); background: white; }
@@ -266,11 +272,14 @@ button:focus-visible { outline: 3px solid rgba(49, 90, 198, .28); outline-offset
   .program-nav { order: -1; display: grid; grid-template-columns: 1fr auto; border: 0; border-bottom: 1px solid #b9cde4; }
   .program-nav.drill-mode .rail-heading { grid-column: 1; grid-row: 1; }
   .program-nav.drill-mode .drill-nav { grid-column: 2; grid-row: 1; }
-  .program-nav.drill-mode .drill-results { grid-column: 1 / -1; grid-row: 2; }
+  .program-nav.drill-mode .drill-timer { grid-column: 1 / -1; grid-row: 2; }
+  .program-nav.drill-mode .drill-results { grid-column: 1 / -1; grid-row: 3; }
   .rail-heading { min-height: 60px; padding: 10px 18px; border: 0; }
   .rail-logo { width: 32px; height: 32px; }
   .program-nav nav { margin: 0; padding: 8px 12px; display: flex; align-items: center; border: 0; }
   .program-nav nav button { min-height: 38px; }
+  .drill-timer { padding: 10px 18px; }
+  .drill-timer time { font-size: 1.25rem; }
   .drill-results { padding: 12px 18px; border-top: 1px solid #bed1e6; border-bottom: 0; }
   .drill-results h2 { margin-bottom: 8px; }
   .drill-results dl { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
@@ -298,7 +307,6 @@ button:focus-visible { outline: 3px solid rgba(49, 90, 198, .28); outline-offset
   .exercise-list button > span:nth-child(3) { display: none; }
   .typing-card { min-height: 170px; padding: 19px 17px; }
   .typing-title-row { align-items: center; }
-  .typing-title-row time { font-size: .9rem; }
   .guide-card { padding-inline: 12px; }
   .guide-card .hands, .intro-guide .hands { min-height: 84px; gap: 35px; transform: scale(1.05); }
   .completion { align-items: flex-start; flex-direction: column; }
