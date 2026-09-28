@@ -191,6 +191,7 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .program-nav .drill-nav .next-button { background: var(--brand); color: white; }
 .program-nav .drill-nav .next-button:hover:not(:disabled) { background: var(--brand-deep); }
 .program-nav .drill-nav .next-button:disabled { border-color: #aebfd3; background: #c5d2df; color: #6d8095; cursor: not-allowed; }
+.program-nav .drill-nav .again-button { border-color: #7da0c8; background: #edf5ff; color: #315b88; }
 .program-nav .drill-nav .cancel-button { background: white; color: var(--brand); }
 .drill-timer { padding: 20px 16px; border-bottom: 1px solid #bed1e6; }
 .drill-timer > div { padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(98, 132, 169, .35); }
@@ -251,6 +252,9 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .paragraph-input { min-height: 38px; overflow-x: auto; color: #1c2839; }
 .paragraph-input .typed-incorrect { color: var(--danger); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .paragraph-caret { display: inline-block !important; width: .5em; margin-left: 2px; border-bottom: 2px solid var(--brand); background: #edf2ff; }
+.text-drill-practice { width: min(100%, 700px); }
+.text-drill-practice .paragraph-reference { color: #536984; }
+.text-drill-practice .paragraph-input { color: #1c3555; }
 
 .key-drill-content { display: grid; gap: 14px; }
 .key-drill-instruction { min-height: 22px; margin: 0; display: flex; align-items: center; gap: 9px; color: #638d28; font-size: .78rem; line-height: 1.45; }

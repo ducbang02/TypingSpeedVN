@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 
 type FingerId = 'left-pinky' | 'left-ring' | 'left-middle' | 'left-index' | 'left-thumb' | 'right-thumb' | 'right-index' | 'right-middle' | 'right-ring' | 'right-pinky'
 type DrillStatus = 'ready' | 'correct' | 'incorrect' | 'complete'
-type DrillId = 1 | 2 | 3 | 4 | 5
-type LessonId = 1 | 2
+type DrillId = 1 | 2 | 3 | 4 | 5 | 6
+type LessonId = 1 | 2 | 3
 type Screen = 'lesson' | 'basics' | 'drill' | 'settings' | 'about'
 type Drill = { id: DrillId; name: string; title: string; hint: string; content: string; duration: string }
 type NewKey = { key: string; finger: FingerId; label: string }
@@ -19,6 +19,7 @@ type LessonData = {
   wordLines: string[]
   sentenceLines: string[]
   paragraphLines: string[]
+  textLines: string[]
   drills: Drill[]
 }
 
@@ -40,6 +41,10 @@ const LESSON_1_PARAGRAPH_LINES = [
   'a lass adds salad; dad asks;',
   'all flasks fall; lads ask;',
   'dad adds; a lass asks;',
+  'a sad lad asks; a lass adds salad;',
+  'all dads fall; a flask falls;',
+  'a lad adds salad; dads ask;',
+  'all lads ask; a sad lass falls;',
 ]
 
 const LESSON_2_KEY_GROUPS = ['ee ', 'ii ', 'de ', 'ki ', 'ed ', 'ik ', 'ei ', 'ie ']
@@ -55,6 +60,36 @@ const LESSON_2_PARAGRAPH_LINES = [
   'a kid adds salad; a lass fills a flask;',
   'silk feels ideal; a file is safe;',
   'all lads like fields; dads like desks;',
+  'a kid likes a file; a lass likes silk;',
+  'a dad sees a field; a lad slides;',
+  'all kids like ideas; files feel ideal;',
+  'a lass fills a flask; dads like salad;',
+]
+
+const LESSON_3_KEY_GROUPS = ['rr ', 'uu ', 'fr ', 'ju ', 'rf ', 'uj ', 'ru ', 'ur ']
+const LESSON_3_WORD_LINES = ['run fur rub jar', 'rural jury runs;', 'four jars are full;', 'just run; fur is rough;', 'a jury finds a fair rule;', 'four small jars run dry;', 'the rural road is rough;']
+const LESSON_3_SENTENCE_LINES = ['a fair rule is just;', 'four jars are full;', 'run up the rural road;', 'the jury finds a flaw;', 'a rough fur rug falls;', 'use your right finger;', 'a fair trial is yours;']
+const LESSON_3_PARAGRAPH_LINES = [
+  'a fair rule is just; four jars are full;',
+  'run up the rural road; the jury finds a flaw;',
+  'a rough fur rug falls; use your right finger;',
+  'four small jars are full; a rural road is rough;',
+  'the jury runs a fair trial; a rule is just;',
+  'use your right finger; return to the home row;',
+  'a fair result is yours; run the full drill;',
+  'the rural road turns; four jars are safe;',
+  'just use a light touch; your form is strong;',
+  'a rough start is fine; your rhythm will grow;',
+  'four full rows are ready; run the next line;',
+  'your fingers return; the home row stays firm;',
+]
+const LESSON_3_TEXT_LINES = [
+  'a calm rhythm makes every practice session feel easier.',
+  'use the right finger, then return to the home row.',
+  'keep your wrists relaxed and let each press stay light.',
+  'read the line first, then type it with steady focus.',
+  'small improvements grow into fluent, accurate typing.',
+  'finish this text drill and review your result with care.',
 ]
 
 type ModelContext = {
@@ -88,6 +123,11 @@ const LESSON_2_NEW_KEYS: NewKey[] = [
   { key: 'I', finger: 'right-middle', label: 'Giữa phải' },
 ]
 
+const LESSON_3_NEW_KEYS: NewKey[] = [
+  { key: 'R', finger: 'left-index', label: 'Trỏ trái' },
+  { key: 'U', finger: 'right-index', label: 'Trỏ phải' },
+]
+
 const LESSONS: Record<LessonId, LessonData> = {
   1: {
     id: 1,
@@ -101,6 +141,7 @@ const LESSONS: Record<LessonId, LessonData> = {
     wordLines: LESSON_1_WORD_LINES,
     sentenceLines: LESSON_1_SENTENCE_LINES,
     paragraphLines: LESSON_1_PARAGRAPH_LINES,
+    textLines: LESSON_1_PARAGRAPH_LINES,
     drills: [
       { id: 1, name: 'New Keys', title: 'Meet the home-row keys', hint: 'Đặt các ngón tay lên A S D F và J K L ;', content: '', duration: '2–3 min.' },
       { id: 2, name: 'Key Drill', title: 'Keep your fingers on the home row', hint: 'Lặp lại từng phím để ghi nhớ vị trí', content: LESSON_1_KEY_GROUPS.join(''), duration: '3–5 min.' },
@@ -121,12 +162,35 @@ const LESSONS: Record<LessonId, LessonData> = {
     wordLines: LESSON_2_WORD_LINES,
     sentenceLines: LESSON_2_SENTENCE_LINES,
     paragraphLines: LESSON_2_PARAGRAPH_LINES,
+    textLines: LESSON_2_PARAGRAPH_LINES,
     drills: [
       { id: 1, name: 'New Keys', title: 'Meet the E and I keys', hint: 'Vươn hai ngón giữa từ D và K lên E và I', content: '', duration: '2–3 min.' },
       { id: 2, name: 'Key Drill', title: 'Reach E and I from the home row', hint: 'Luyện chuyển động D–E và K–I', content: LESSON_2_KEY_GROUPS.join(''), duration: '3–5 min.' },
       { id: 3, name: 'Word Drill', title: 'Build words with E and I', hint: 'Gõ hết một dòng để hiện dòng từ tiếp theo', content: LESSON_2_WORD_LINES.join(''), duration: '3–5 min.' },
       { id: 4, name: 'Sentence Drill', title: 'Use E and I in short sentences', hint: 'Gõ hết mỗi dòng rồi nhấn Enter để sang dòng tiếp theo', content: LESSON_2_SENTENCE_LINES.map((line) => `${line}\n`).join(''), duration: '3–5 min.' },
       { id: 5, name: 'Paragraph Drill', title: 'Practice E and I in paragraphs', hint: 'Gõ hết mỗi dòng rồi nhấn Enter để xuống dòng', content: LESSON_2_PARAGRAPH_LINES.map((line) => `${line}\n`).join(''), duration: '4–6 min.' },
+    ],
+  },
+  3: {
+    id: 3,
+    title: 'Upper Row Reach: R · U',
+    description: 'Mở rộng lực vươn của hai ngón trỏ lên R và U, rồi kết hợp với các phím đã học để gõ văn bản liền mạch.',
+    keySummary: 'R · U',
+    newKeyCharacters: 'ru',
+    newKeys: LESSON_3_NEW_KEYS,
+    newKeysIntro: 'Giữ các ngón còn lại ở hàng cơ sở. Đưa ngón trỏ trái lên R và ngón trỏ phải lên U, sau đó đưa tay trở về vị trí ban đầu.',
+    keyDrillGroups: LESSON_3_KEY_GROUPS,
+    wordLines: LESSON_3_WORD_LINES,
+    sentenceLines: LESSON_3_SENTENCE_LINES,
+    paragraphLines: LESSON_3_PARAGRAPH_LINES,
+    textLines: LESSON_3_TEXT_LINES,
+    drills: [
+      { id: 1, name: 'New Keys', title: 'Meet the R and U keys', hint: 'Vươn hai ngón trỏ từ F và J lên R và U', content: '', duration: '2–3 min.' },
+      { id: 2, name: 'Key Drill', title: 'Reach R and U from the home row', hint: 'Luyện chuyển động F–R và J–U', content: LESSON_3_KEY_GROUPS.join(''), duration: '3–5 min.' },
+      { id: 3, name: 'Word Drill', title: 'Build words with R and U', hint: 'Gõ hết một dòng để hiện dòng từ tiếp theo', content: LESSON_3_WORD_LINES.join(''), duration: '3–5 min.' },
+      { id: 4, name: 'Sentence Drill', title: 'Use R and U in short sentences', hint: 'Gõ hết mỗi dòng rồi nhấn Enter để sang dòng tiếp theo', content: LESSON_3_SENTENCE_LINES.map((line) => `${line}\n`).join(''), duration: '3–5 min.' },
+      { id: 5, name: 'Paragraph Drill', title: 'Practice R and U in paragraphs', hint: 'Gõ hết mỗi dòng rồi nhấn Enter để xuống dòng', content: LESSON_3_PARAGRAPH_LINES.map((line) => `${line}\n`).join(''), duration: '4–6 min.' },
+      { id: 6, name: 'Text Drill', title: 'Type a focused practice text', hint: 'Gõ từng dòng văn bản; bàn phím và bàn tay được ẩn để tập trung', content: LESSON_3_TEXT_LINES.map((line) => `${line}\n`).join(''), duration: '4–6 min.' },
     ],
   },
 }
@@ -310,7 +374,7 @@ function WordSequence({ lines, position, status }: { lines: string[]; position: 
   )
 }
 
-function ParagraphPractice({ lines, position, typedText }: { lines: string[]; position: number; typedText: string }) {
+function ParagraphPractice({ lines, position, typedText, className = '', label = 'Đoạn văn mẫu' }: { lines: string[]; position: number; typedText: string; className?: string; label?: string }) {
   let line = lines[lines.length - 1]
   let lineStart = 0
   let currentLineIndex = lines.length - 1
@@ -333,8 +397,8 @@ function ParagraphPractice({ lines, position, typedText }: { lines: string[]; po
   let referenceStart = lines.slice(0, pageStart).reduce((total, referenceLine) => total + referenceLine.length + 1, 0)
 
   return (
-    <div className="paragraph-practice">
-      <div className="paragraph-reference" aria-label={`Đoạn văn mẫu gồm ${lines.length} dòng`}>
+    <div className={`paragraph-practice ${className}`.trim()}>
+      <div className="paragraph-reference" aria-label={`${label} gồm ${lines.length} dòng`}>
         {visibleLines.map((referenceLine, visibleIndex) => {
           const lineIndex = pageStart + visibleIndex
           const currentStart = referenceStart
@@ -381,6 +445,9 @@ export default function App() {
   const [showGuides, setShowGuides] = useState(true)
   const [showEnglishKeyboardWarning, setShowEnglishKeyboardWarning] = useState(false)
   const practiceRef = useRef<HTMLElement>(null)
+  const againButtonRef = useRef<HTMLButtonElement>(null)
+  const nextButtonRef = useRef<HTMLButtonElement>(null)
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
 
   const activeLesson = LESSONS[activeLessonId]
   const drills = activeLesson.drills
@@ -447,6 +514,12 @@ export default function App() {
   }, [isTypingDrill, screen])
 
   useEffect(() => {
+    if (screen !== 'drill' || !isComplete) return
+    const frame = requestAnimationFrame(() => nextButtonRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [activeDrillId, activeLessonId, isComplete, screen])
+
+  useEffect(() => {
     if (screen !== 'drill' || !isTypingDrill || startedAt === null || isComplete || isPaused) return
     const updateTimer = () => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000)
@@ -499,7 +572,7 @@ export default function App() {
     event.preventDefault(); setPressedKey(key === 'Enter' ? 'enter' : key)
     if (startedAt === null) setStartedAt(Date.now())
     setKeystrokes((current) => current + 1)
-    if (activeDrillId === 5) {
+    if (activeDrillId === 5 || activeDrillId === 6) {
       if (expectedKey === '\n') {
         if (key === 'Enter') {
           const nextPosition = position + 1
@@ -562,6 +635,29 @@ export default function App() {
     setScreen('lesson')
   }
 
+  const handleResultNavigation = (event: KeyboardEvent<HTMLElement>) => {
+    if (!isComplete) return
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      if (document.activeElement === againButtonRef.current) restart()
+      else if (document.activeElement === cancelButtonRef.current) cancelDrill()
+      else goToNextDrill()
+      return
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      cancelDrill()
+      return
+    }
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+    event.preventDefault()
+    const buttons = [againButtonRef.current, nextButtonRef.current, cancelButtonRef.current].filter((button): button is HTMLButtonElement => button !== null)
+    const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement)
+    const direction = event.key === 'ArrowDown' ? 1 : -1
+    const nextIndex = (currentIndex + direction + buttons.length) % buttons.length
+    buttons[nextIndex].focus()
+  }
+
   const openLesson = () => setScreen('lesson')
 
   const selectLesson = (lessonId: LessonId) => {
@@ -590,7 +686,7 @@ export default function App() {
               </div>
               <nav className="lesson-tabs" aria-label="Danh sách lesson">
                 {Array.from({ length: 12 }, (_, index) => index + 1).map((lessonNumber) => (
-                  <button aria-current={lessonNumber === activeLessonId ? 'page' : undefined} disabled={lessonNumber > 2} key={lessonNumber} onClick={() => lessonNumber <= 2 && selectLesson(lessonNumber as LessonId)} title={lessonNumber <= 2 ? `Lesson ${lessonNumber}` : 'Sắp ra mắt'} type="button">{lessonNumber}</button>
+                  <button aria-current={lessonNumber === activeLessonId ? 'page' : undefined} disabled={lessonNumber > 3} key={lessonNumber} onClick={() => lessonNumber <= 3 && selectLesson(lessonNumber as LessonId)} title={lessonNumber <= 3 ? `Lesson ${lessonNumber}` : 'Sắp ra mắt'} type="button">{lessonNumber}</button>
                 ))}
               </nav>
               <div className="lesson-summary">
@@ -612,7 +708,7 @@ export default function App() {
                 {drills.map((drill, index) => {
                   const isDone = completedDrills.has(progressKey(activeLessonId, drill.id))
                   const firstReady = drills.find((item) => !completedDrills.has(progressKey(activeLessonId, item.id)))?.id
-                  const canRecommend = activeLessonId === 2 || basicsComplete
+                  const canRecommend = activeLessonId !== 1 || basicsComplete
                   return (
                     <li className={canRecommend && drill.id === firstReady ? 'recommended' : ''} key={drill.id}>
                       <button type="button" onClick={() => selectDrill(drill.id)}>
@@ -759,13 +855,15 @@ export default function App() {
                       <SentenceSequence lines={activeLesson.sentenceLines} position={position} status={status} />
                     ) : activeDrillId === 5 ? (
                       <ParagraphPractice lines={activeLesson.paragraphLines} position={position} typedText={typedText} />
+                    ) : activeDrillId === 6 ? (
+                      <ParagraphPractice className="text-drill-practice" label="Văn bản mẫu" lines={activeLesson.textLines} position={position} typedText={typedText} />
                     ) : (
                       <div className={`typing-line ${activeDrill.content.length > 60 ? 'compact' : ''}`} aria-label={`Nội dung cần gõ: ${activeDrill.content}`}>
                         {activeDrill.content.split('').map((character, index) => <span className={`${character === ' ' ? 'space-char' : ''} ${index < position ? 'typed' : index === position ? 'current-char' : ''}`} key={`${character}-${index}`}>{character === ' ' ? '\u00a0' : character}</span>)}
                       </div>
                     )}
                   </section>
-                  {showGuides && (
+                  {showGuides && activeDrillId !== 6 && (
                     <section className="guide-card" aria-label="Bàn phím và vị trí bàn tay">
                       <Keyboard pressedKey={pressedKey} status={status} targetKey={targetKey} />
                       <Hands activeFinger={activeFinger} />
@@ -818,9 +916,10 @@ export default function App() {
                   </dl>
                 </section>
               )}
-              <nav className="drill-nav" aria-label="Điều khiển bài luyện">
-                <button aria-keyshortcuts={isComplete ? 'Enter' : undefined} className="next-button" disabled={isTypingDrill && !isComplete} type="button" onClick={goToNextDrill}>Next{isComplete && <kbd>Enter</kbd>}</button>
-                <button aria-keyshortcuts={isComplete ? 'Escape' : undefined} className="cancel-button" type="button" onClick={cancelDrill}>Cancel{isComplete && <kbd>Esc</kbd>}</button>
+              <nav className="drill-nav" aria-label="Điều khiển bài luyện" onKeyDown={handleResultNavigation}>
+                {isComplete && <button className="again-button" ref={againButtonRef} type="button" onClick={restart}>Again</button>}
+                <button aria-keyshortcuts={isComplete ? 'Enter' : undefined} className="next-button" disabled={isTypingDrill && !isComplete} ref={nextButtonRef} type="button" onClick={goToNextDrill}>Next{isComplete && <kbd>Enter</kbd>}</button>
+                <button aria-keyshortcuts={isComplete ? 'Escape' : undefined} className="cancel-button" ref={cancelButtonRef} type="button" onClick={cancelDrill}>Cancel{isComplete && <kbd>Esc</kbd>}</button>
               </nav>
             </>
           ) : (
