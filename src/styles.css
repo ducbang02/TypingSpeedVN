@@ -187,6 +187,7 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .program-nav nav button span { display: grid; width: 20px; height: 20px; place-items: center; border: 1px solid #7ba1c9; border-radius: 50%; color: var(--brand); font-family: Georgia, serif; font-size: .7rem; font-weight: 700; }
 .program-nav .drill-nav { gap: 8px; }
 .program-nav .drill-nav button { justify-content: center; border-color: var(--brand); font-size: .8rem; font-weight: 700; text-align: center; }
+.program-nav .drill-nav kbd { padding: 2px 5px; border: 1px solid currentColor; border-radius: 3px; font-family: inherit; font-size: .58rem; font-weight: 700; line-height: 1; opacity: .78; }
 .program-nav .drill-nav .next-button { background: var(--brand); color: white; }
 .program-nav .drill-nav .next-button:hover:not(:disabled) { background: var(--brand-deep); }
 .program-nav .drill-nav .next-button:disabled { border-color: #aebfd3; background: #c5d2df; color: #6d8095; cursor: not-allowed; }
@@ -230,6 +231,31 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .typing-line .typed { color: #274cc0; }
 .typing-line .current-char { border-bottom-color: #274cc0; background: #edf2ff; color: #274cc0; }
 
+.sentence-sequence { width: min(100%, 540px); margin: 0 auto; overflow-x: auto; }
+.sentence-line { min-width: max-content; flex: 1; font-size: clamp(1.35rem, 2.65vw, 2rem); line-height: 1.58; white-space: nowrap; }
+.line-enter-symbol { min-width: 1em !important; margin-left: .16em; border-bottom: 0 !important; color: #5f7087; font-family: "Trebuchet MS", "Segoe UI", sans-serif; font-size: .65em; font-weight: 700; }
+.line-enter-symbol.current { background: #dfe7ff; color: var(--brand-deep); box-shadow: inset 0 -2px 0 var(--brand); }
+.sentence-sequence.status-incorrect .typing-line .current-char, .sentence-sequence.status-incorrect .line-enter-symbol.current { border-color: var(--danger); background: #fff0f2; color: var(--danger); }
+
+.word-sequence { width: min(100%, 540px); margin: 0 auto; overflow-x: auto; }
+.word-line { min-width: max-content; font-size: clamp(1.35rem, 2.65vw, 2rem); line-height: 1.58; white-space: nowrap; }
+.word-sequence.status-incorrect .typing-line .current-char { border-bottom-color: var(--danger); background: #fff0f2; color: var(--danger); }
+
+.paragraph-practice { width: min(100%, 590px); margin: 0 auto; display: grid; gap: 17px; color: #17243a; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.2rem, 2.25vw, 1.65rem); line-height: 1.55; }
+.paragraph-reference { display: grid; gap: 2px; overflow-x: auto; color: #66778d; }
+.paragraph-reference-line, .paragraph-input { min-width: max-content; white-space: nowrap; }
+.paragraph-reference-line.active { color: #35465c; }
+.paragraph-reference span, .paragraph-input span { display: inline; }
+.paragraph-reference .reference-current { border-bottom: 2px solid var(--brand); background: #edf2ff; color: var(--brand-deep); }
+.paragraph-divider { width: 100%; border-top: 2px solid #4d79da; }
+.paragraph-input { min-height: 38px; overflow-x: auto; color: #1c2839; }
+.paragraph-input .typed-incorrect { color: var(--danger); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.paragraph-caret { display: inline-block !important; width: .5em; margin-left: 2px; border-bottom: 2px solid var(--brand); background: #edf2ff; }
+
+.key-drill-content { display: grid; gap: 14px; }
+.key-drill-instruction { min-height: 22px; margin: 0; display: flex; align-items: center; gap: 9px; color: #638d28; font-size: .78rem; line-height: 1.45; }
+.key-drill-instruction.is-hidden { visibility: hidden; }
+.key-drill-instruction > span { display: grid; width: 22px; height: 22px; flex: none; place-items: center; border-radius: 50%; background: #9bcf55; color: white; font-size: .58rem; }
 .key-sequence { display: grid; grid-template-columns: repeat(3, max-content); justify-content: center; align-items: center; gap: 14px 20px; overflow-x: auto; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
 .sequence-group { display: inline-flex; align-items: center; gap: 6px; }
 .sequence-key { display: grid; min-width: 43px; height: 40px; padding: 0 8px; place-items: center; border: 2px solid #9eb1d1; background: #f6f8ff; color: #1c3f9d; font-size: .95rem; font-weight: 700; line-height: 1; }
@@ -256,7 +282,7 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .finger-2, .finger-4 { height: 37px; }
 .finger-3 { height: 42px; }
 .finger.active { border-color: var(--finger-color); background: var(--finger-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--finger-color) 16%, white); }
-.hands.color-coded .finger:not(.active, .finger-left-thumb, .finger-right-thumb) { border-color: var(--finger-color); background: color-mix(in srgb, var(--finger-color) 72%, white); }
+.hands.color-coded .finger.introduced:not(.active, .finger-left-thumb, .finger-right-thumb) { border-color: var(--finger-color); background: color-mix(in srgb, var(--finger-color) 72%, white); }
 .palm { position: absolute; z-index: 1; left: 11px; right: 11px; bottom: 0; height: 29px; border: 2px solid #c8d1dc; border-radius: 7px 7px 15px 15px; background: #f3f6f8; }
 
 .keyboard-scroll { min-width: 0; overflow-x: auto; padding-bottom: 2px; }
@@ -288,6 +314,7 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .intro-copy { min-height: 52px; padding: 13px 16px; display: flex; align-items: center; border: 1px solid var(--line); background: white; color: #53667e; }
 .intro-copy p { margin: 0; font-size: .82rem; line-height: 1.5; }
 .home-row-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.home-row-grid.few-keys { width: min(320px, 100%); margin-inline: auto; grid-template-columns: repeat(2, minmax(110px, 1fr)); }
 .home-key { padding: 10px 4px 8px; display: grid; justify-items: center; gap: 6px; border: 1px solid color-mix(in srgb, var(--finger-color) 65%, white); border-top: 4px solid var(--finger-color); background: color-mix(in srgb, var(--finger-color) 16%, white); }
 .home-key strong { font-family: Georgia, serif; color: var(--finger-color); font-size: 1.65rem; }
 .home-key span { color: color-mix(in srgb, var(--finger-color) 68%, #29364a); font-size: .56rem; font-weight: 700; text-align: center; }
