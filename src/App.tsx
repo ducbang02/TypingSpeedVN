@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 
 type FingerId = 'left-pinky' | 'left-ring' | 'left-middle' | 'left-index' | 'left-thumb' | 'right-thumb' | 'right-index' | 'right-middle' | 'right-ring' | 'right-pinky'
 type DrillStatus = 'ready' | 'correct' | 'incorrect' | 'complete'
-type DrillId = 1 | 2 | 3 | 4 | 5 | 6
+type DrillId = 1 | 2 | 3 | 4 | 5
 type Screen = 'lesson' | 'basics' | 'drill' | 'settings' | 'about'
 type Drill = { id: DrillId; name: string; title: string; hint: string; content: string; duration: string }
 
 const DRILL_TIME_LIMIT = 5 * 60
 const KEY_DRILL_GROUPS = ['aa ', 'dd ', 'ss ', 'ff ', 'jj ', 'kk ', 'll ', ';; ']
+const KEY_DRILL_PAGE_SIZE = 6
 const NEW_KEY_CHARACTERS = 'asdfjkl;'
+const VIETNAMESE_CHARACTERS = /[ăâđêôơưàáảãạằắẳẵặầấẩẫậèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ]/i
 const BASICS_SLIDE_TITLES = ['Touch Typing là gì?', 'Vị trí các ngón tay', 'Cách nhấn phím', 'Mẹo luyện tập', 'Sẵn sàng bắt đầu']
 
 type ModelContext = {
@@ -32,7 +34,6 @@ const drills: Drill[] = [
   { id: 3, name: 'Word Drill', title: 'Build words with home-row keys', hint: 'Gõ từng từ, giữ tay ở hàng cơ sở', content: 'sad dad all fall ask flask salad lass; sad dad fall ask;', duration: '3–5 min.' },
   { id: 4, name: 'Sentence Drill', title: 'Connect words into short sentences', hint: 'Giữ nhịp đều khi chuyển giữa các từ', content: 'a lad asks a dad; a sad lass falls; a dad asks a lad;', duration: '3–5 min.' },
   { id: 5, name: 'Paragraph Drill', title: 'Type a full home-row paragraph', hint: 'Ưu tiên độ chính xác trước tốc độ', content: 'a lad asks a dad; a sad lass falls; a dad adds salad; a flask falls; a lass asks a lad; all dads add salad;', duration: '4–6 min.' },
-  { id: 6, name: 'Speed Test', title: 'Five-minute home-row test', hint: 'Đồng hồ bắt đầu khi bạn gõ ký tự đầu tiên', content: 'asdf jkl; sad dad fall ask; flask salad lass all; a lad asks a dad; a sad lass falls; asdf jkl; dad adds salad; a flask falls;', duration: '5 min.' },
 ]
 
 const homeRowKeys: Array<{ key: string; finger: FingerId; label: string }> = [
@@ -133,11 +134,25 @@ function Hands({ activeFinger, colorCoded = false }: { activeFinger: FingerId | 
 }
 
 function KeySequence({ position, status }: { position: number; status: DrillStatus }) {
-  let offset = 0
+  let traversed = 0
+  let currentGroupIndex = KEY_DRILL_GROUPS.length - 1
+
+  for (let index = 0; index < KEY_DRILL_GROUPS.length; index += 1) {
+    traversed += KEY_DRILL_GROUPS[index].length
+    if (position < traversed) {
+      currentGroupIndex = index
+      break
+    }
+  }
+
+  const pageStart = Math.floor(currentGroupIndex / KEY_DRILL_PAGE_SIZE) * KEY_DRILL_PAGE_SIZE
+  const visibleGroups = KEY_DRILL_GROUPS.slice(pageStart, pageStart + KEY_DRILL_PAGE_SIZE)
+  let offset = KEY_DRILL_GROUPS.slice(0, pageStart).join('').length
 
   return (
     <div className={`key-sequence status-${status}`} aria-label={`Chuỗi phím cần gõ: ${KEY_DRILL_GROUPS.join('')}`}>
-      {KEY_DRILL_GROUPS.map((group, groupIndex) => {
+      {visibleGroups.map((group, visibleIndex) => {
+        const groupIndex = pageStart + visibleIndex
         const groupStart = offset
         offset += group.length
         return (
@@ -171,6 +186,7 @@ export default function App() {
   const [isPaused, setIsPaused] = useState(false)
   const [pausedAt, setPausedAt] = useState<number | null>(null)
   const [showGuides, setShowGuides] = useState(true)
+  const [showEnglishKeyboardWarning, setShowEnglishKeyboardWarning] = useState(false)
   const practiceRef = useRef<HTMLElement>(null)
 
   const activeDrill = drills.find((drill) => drill.id === activeDrillId) ?? drills[0]
@@ -259,6 +275,12 @@ export default function App() {
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.ctrlKey || event.altKey || event.metaKey || isComplete || isPaused) return
+    if (event.nativeEvent.isComposing || event.key === 'Process' || VIETNAMESE_CHARACTERS.test(event.key)) {
+      event.preventDefault()
+      setShowEnglishKeyboardWarning(true)
+      setPressedKey(null)
+      return
+    }
     const key = normalizeKey(event.key)
     if (key === 'Backspace') {
       event.preventDefault(); setPosition((current) => Math.max(0, current - 1)); setStatus('ready'); setPressedKey(null); return
@@ -278,6 +300,7 @@ export default function App() {
   }
 
   const goToNextDrill = () => {
+    if (!isTypingDrill) setCompletedDrills((current) => new Set(current).add(activeDrillId))
     const nextDrill = drills.find((drill) => drill.id === activeDrillId + 1)
     if (nextDrill) selectDrill(nextDrill.id)
     else setScreen('lesson')
@@ -320,7 +343,7 @@ export default function App() {
             <section className="lesson-overview" aria-labelledby="course-title">
               <div className="section-title-row">
                 <div><p className="eyebrow">English typing course</p><h1 id="course-title">Fast Touch Typing Course</h1></div>
-                <span className="course-progress">{completedDrills.size + (basicsComplete ? 1 : 0)}/7 complete</span>
+                <span className="course-progress">{completedDrills.size + (basicsComplete ? 1 : 0)}/6 complete</span>
               </div>
               <nav className="lesson-tabs" aria-label="Danh sách lesson">
                 {Array.from({ length: 12 }, (_, index) => index + 1).map((lessonNumber) => (
@@ -330,7 +353,7 @@ export default function App() {
               <div className="lesson-summary">
                 <p className="lesson-number">Lesson 1</p>
                 <h2>The Home Row: A S D F · J K L ;</h2>
-                <p>Học vị trí hàng phím cơ sở, sau đó tiến dần từ phím đơn đến đoạn văn và bài kiểm tra tốc độ.</p>
+                <p>Học vị trí hàng phím cơ sở, sau đó tiến dần từ phím đơn đến đoạn văn hoàn chỉnh.</p>
               </div>
               <ol className="exercise-list">
                 <li className={!basicsComplete ? 'recommended' : ''}>
@@ -359,7 +382,7 @@ export default function App() {
                 </li>
                 {drills.slice(1).map((drill, index) => {
                   const isDone = completedDrills.has(drill.id)
-                  const firstReady = drills.find((item) => !completedDrills.has(item.id))?.id ?? 6
+                  const firstReady = drills.find((item) => !completedDrills.has(item.id))?.id ?? 5
                   return (
                     <li className={basicsComplete && drill.id === firstReady ? 'recommended' : ''} key={drill.id}>
                       <button type="button" onClick={() => selectDrill(drill.id)}>
@@ -470,6 +493,12 @@ export default function App() {
             <section className="drill-screen" aria-labelledby="drill-title">
               <div className="typing-title-row">
                 <h1 id="drill-title">Lesson 1: {activeDrill.name}</h1>
+                {showEnglishKeyboardWarning && (
+                  <div className="keyboard-language-warning" role="alert">
+                    <span aria-hidden="true">!</span>
+                    <span>Hãy chuyển bàn phím sang <strong>EN</strong> để có trải nghiệm tốt hơn.</span>
+                  </div>
+                )}
               </div>
 
               {activeDrill.id === 1 ? (
@@ -483,7 +512,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="typing-workspace">
-                  <section aria-label={`${activeDrill.name}: ${activeDrill.title}`} className={`typing-card status-${status} ${activeDrill.content.length > 60 ? 'long-content' : ''}`} onClick={() => practiceRef.current?.focus()} onKeyDown={handleKeyDown} onKeyUp={() => setPressedKey(null)} ref={practiceRef} tabIndex={0}>
+                  <section aria-label={`${activeDrill.name}: ${activeDrill.title}`} className={`typing-card status-${status} ${activeDrill.content.length > 60 ? 'long-content' : ''}`} onClick={() => practiceRef.current?.focus()} onCompositionStart={() => setShowEnglishKeyboardWarning(true)} onKeyDown={handleKeyDown} onKeyUp={() => setPressedKey(null)} ref={practiceRef} tabIndex={0}>
                     {isComplete ? (
                       <div className="completion" role="status" aria-live="polite">
                         <div className="completion-copy"><span className="completion-icon" aria-hidden="true">✓</span><strong>{secondsLeft === 0 ? 'Hết giờ' : `Hoàn thành ${activeDrill.name}`}</strong><small>{secondsLeft === 0 ? 'Bài luyện đã tự động kết thúc.' : 'Kết quả đã sẵn sàng ở bảng bên phải.'}</small></div>
@@ -550,7 +579,7 @@ export default function App() {
                 </section>
               )}
               <nav className="drill-nav" aria-label="Điều khiển bài luyện">
-                <button className="next-button" disabled={!isComplete} type="button" onClick={goToNextDrill}>Next</button>
+                <button className="next-button" disabled={isTypingDrill && !isComplete} type="button" onClick={goToNextDrill}>Next</button>
                 <button className="cancel-button" type="button" onClick={cancelDrill}>Cancel</button>
               </nav>
             </>

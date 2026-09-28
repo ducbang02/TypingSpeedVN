@@ -205,8 +205,10 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .drill-results dt { color: #617b97; font-size: .65rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .drill-results dd { margin: 0; color: #132f50; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
-.typing-title-row { min-height: 48px; margin-bottom: 0; padding: 0 3px 13px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.typing-title-row { min-height: 48px; margin-bottom: 0; padding: 0 3px 13px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
 .typing-title-row h1 { font-size: clamp(1.3rem, 2.4vw, 1.7rem); }
+.keyboard-language-warning { max-width: 390px; padding: 8px 11px; display: flex; align-items: center; gap: 8px; border: 1px solid #dfbb62; background: #fff8df; color: #72520d; font-size: .72rem; line-height: 1.35; }
+.keyboard-language-warning > span:first-child { display: grid; width: 20px; height: 20px; flex: none; place-items: center; border-radius: 50%; background: #d39816; color: white; font-weight: 800; }
 .typing-workspace { border: 1px solid var(--line); background: white; }
 .typing-card, .guide-card { background: white; }
 .settings-card, .about-card { border: 1px solid var(--line); background: white; }
@@ -228,7 +230,7 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .typing-line .typed { color: #274cc0; }
 .typing-line .current-char { border-bottom-color: #274cc0; background: #edf2ff; color: #274cc0; }
 
-.key-sequence { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+.key-sequence { display: grid; grid-template-columns: repeat(3, max-content); justify-content: center; align-items: center; gap: 14px 20px; overflow-x: auto; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
 .sequence-group { display: inline-flex; align-items: center; gap: 6px; }
 .sequence-key { display: grid; min-width: 43px; height: 40px; padding: 0 8px; place-items: center; border: 2px solid #9eb1d1; background: #f6f8ff; color: #1c3f9d; font-size: .95rem; font-weight: 700; line-height: 1; }
 .sequence-key.space-key { min-width: 72px; font-size: .7rem; }
@@ -246,7 +248,7 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .guide-card { padding: 8px 20px 16px; display: flex; flex-direction: column; gap: 14px; border: 0; }
 .guide-card .hands { min-height: 118px; padding-top: 10px; gap: 76px; transform: scale(1.55); transform-origin: top center; }
 
-.hands { display: flex; justify-content: center; gap: 13px; padding-top: 5px; }
+.hands { display: flex; justify-content: center; gap: 13px; padding-top: 5px; pointer-events: none; }
 .hand { position: relative; width: 73px; height: 66px; }
 .finger-set { position: relative; z-index: 2; height: 45px; display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
 .finger { display: block; width: 11px; height: 34px; border: 2px solid #c8d1dc; border-radius: 7px 7px 3px 3px; background: #f3f6f8; }
