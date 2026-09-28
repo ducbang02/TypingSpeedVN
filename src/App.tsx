@@ -7,6 +7,7 @@ type Screen = 'lesson' | 'drill' | 'settings' | 'about'
 type Drill = { id: DrillId; name: string; title: string; hint: string; content: string; duration: string }
 
 const DRILL_TIME_LIMIT = 5 * 60
+const KEY_DRILL_GROUPS = ['aa ', 'dd ', 'ss ', 'ff ', 'jj ', 'kk ', 'll ', ';; ']
 
 type ModelContext = {
   registerTool: (tool: {
@@ -25,7 +26,7 @@ declare global {
 
 const drills: Drill[] = [
   { id: 1, name: 'New Keys', title: 'Meet the home-row keys', hint: 'Đặt các ngón tay lên A S D F và J K L ;', content: '', duration: '2–3 min.' },
-  { id: 2, name: 'Key Drill', title: 'Keep your fingers on the home row', hint: 'Lặp lại từng phím để ghi nhớ vị trí', content: 'asdf jkl; asdf jkl;', duration: '3–5 min.' },
+  { id: 2, name: 'Key Drill', title: 'Keep your fingers on the home row', hint: 'Lặp lại từng phím để ghi nhớ vị trí', content: KEY_DRILL_GROUPS.join(''), duration: '3–5 min.' },
   { id: 3, name: 'Word Drill', title: 'Build words with home-row keys', hint: 'Gõ từng từ, giữ tay ở hàng cơ sở', content: 'sad dad all fall ask flask salad lass; sad dad fall ask;', duration: '3–5 min.' },
   { id: 4, name: 'Sentence Drill', title: 'Connect words into short sentences', hint: 'Giữ nhịp đều khi chuyển giữa các từ', content: 'a lad asks a dad; a sad lass falls; a dad asks a lad;', duration: '3–5 min.' },
   { id: 5, name: 'Paragraph Drill', title: 'Type a full home-row paragraph', hint: 'Ưu tiên độ chính xác trước tốc độ', content: 'a lad asks a dad; a sad lass falls; a dad adds salad; a flask falls; a lass asks a lad; all dads add salad;', duration: '4–6 min.' },
@@ -126,6 +127,28 @@ function Hands({ activeFinger }: { activeFinger: FingerId | null }) {
     )
   }
   return <div className="hands">{renderHand('left')}{renderHand('right')}</div>
+}
+
+function KeySequence({ position, status }: { position: number; status: DrillStatus }) {
+  let offset = 0
+
+  return (
+    <div className={`key-sequence status-${status}`} aria-label={`Chuỗi phím cần gõ: ${KEY_DRILL_GROUPS.join('')}`}>
+      {KEY_DRILL_GROUPS.map((group, groupIndex) => {
+        const groupStart = offset
+        offset += group.length
+        return (
+          <span className="sequence-group" key={`${group}-${groupIndex}`}>
+            {group.split('').map((character, characterIndex) => {
+              const index = groupStart + characterIndex
+              const stateClass = index < position ? 'typed' : index === position ? 'current-char' : ''
+              return <span className={`sequence-key ${character === ' ' ? 'space-key' : ''} ${stateClass}`} key={`${character}-${index}`}>{character === ' ' ? 'Space' : character.toUpperCase()}</span>
+            })}
+          </span>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function App() {
@@ -327,6 +350,8 @@ export default function App() {
                       <div className="completion" role="status" aria-live="polite">
                         <div className="completion-copy"><span className="completion-icon" aria-hidden="true">✓</span><strong>{secondsLeft === 0 ? 'Hết giờ' : `Hoàn thành ${activeDrill.name}`}</strong><small>{secondsLeft === 0 ? 'Bài luyện đã tự động kết thúc.' : 'Kết quả đã sẵn sàng ở bảng bên phải.'}</small></div>
                       </div>
+                    ) : activeDrillId === 2 ? (
+                      <KeySequence position={position} status={status} />
                     ) : (
                       <div className={`typing-line ${activeDrill.content.length > 60 ? 'compact' : ''}`} aria-label={`Nội dung cần gõ: ${activeDrill.content}`}>
                         {activeDrill.content.split('').map((character, index) => <span className={`${character === ' ' ? 'space-char' : ''} ${index < position ? 'typed' : index === position ? 'current-char' : ''}`} key={`${character}-${index}`}>{character === ' ' ? '\u00a0' : character}</span>)}
