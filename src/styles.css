@@ -329,12 +329,14 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .simple-page { max-width: 790px; }
 .page-lead { max-width: 620px; margin: 10px 0 26px; color: var(--muted); font-size: .88rem; line-height: 1.6; }
 .settings-card { margin-bottom: 20px; }
-.settings-card > div, .toggle-row { min-height: 66px; padding: 14px 17px; display: flex; align-items: center; justify-content: space-between; gap: 25px; border-bottom: 1px solid var(--line); }
+.settings-card > div, .toggle-row, .language-row { min-height: 66px; padding: 14px 17px; display: flex; align-items: center; justify-content: space-between; gap: 25px; border-bottom: 1px solid var(--line); }
 .settings-card > div:last-child { border-bottom: 0; }
-.settings-card strong, .toggle-row strong { display: block; font-size: .82rem; }
+.settings-card strong, .toggle-row strong, .language-row strong { display: block; font-size: .82rem; }
 .settings-card span, .toggle-row small { color: var(--muted); font-size: .75rem; }
 .toggle-row > span { display: grid; gap: 4px; }
 .toggle-row input { width: 18px; height: 18px; accent-color: var(--brand); }
+.language-row select { min-width: 145px; height: 38px; padding: 0 34px 0 11px; border: 1px solid #9fb9d5; border-radius: 3px; background: white; color: #203c5d; font: inherit; font-size: .78rem; }
+.language-row select:focus-visible { outline: 3px solid rgba(49, 90, 198, .22); outline-offset: 2px; }
 .about-card { margin-bottom: 20px; padding: 22px; display: flex; align-items: center; gap: 14px; }
 .about-mark { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 50%; background: var(--brand); color: white; font-size: .8rem; font-weight: 800; }
 .about-card > div { display: grid; gap: 5px; }
