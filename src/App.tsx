@@ -3,11 +3,13 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 type FingerId = 'left-pinky' | 'left-ring' | 'left-middle' | 'left-index' | 'left-thumb' | 'right-thumb' | 'right-index' | 'right-middle' | 'right-ring' | 'right-pinky'
 type DrillStatus = 'ready' | 'correct' | 'incorrect' | 'complete'
 type DrillId = 1 | 2 | 3 | 4 | 5 | 6
-type Screen = 'lesson' | 'drill' | 'settings' | 'about'
+type Screen = 'lesson' | 'basics' | 'drill' | 'settings' | 'about'
 type Drill = { id: DrillId; name: string; title: string; hint: string; content: string; duration: string }
 
 const DRILL_TIME_LIMIT = 5 * 60
 const KEY_DRILL_GROUPS = ['aa ', 'dd ', 'ss ', 'ff ', 'jj ', 'kk ', 'll ', ';; ']
+const NEW_KEY_CHARACTERS = 'asdfjkl;'
+const BASICS_SLIDE_TITLES = ['Touch Typing là gì?', 'Vị trí các ngón tay', 'Cách nhấn phím', 'Mẹo luyện tập', 'Sẵn sàng bắt đầu']
 
 type ModelContext = {
   registerTool: (tool: {
@@ -85,10 +87,10 @@ function formatTime(totalSeconds: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
-function Keyboard({ targetKey, pressedKey, status }: { targetKey: string; pressedKey: string | null; status: DrillStatus }) {
+function Keyboard({ targetKey, pressedKey, status, colorCoded = false }: { targetKey: string; pressedKey: string | null; status: DrillStatus; colorCoded?: boolean }) {
   return (
     <div className="keyboard-scroll">
-      <div className="keyboard" aria-label="Bàn phím ảo">
+      <div className={`keyboard ${colorCoded ? 'color-coded' : ''}`} aria-label="Bàn phím ảo">
         {keyboardRows.map((row, rowIndex) => (
           <div className={`key-row row-${rowIndex}`} key={`${rowIndex}-${row.join('')}`}>
             {row.map((value, keyIndex) => {
@@ -96,9 +98,10 @@ function Keyboard({ targetKey, pressedKey, status }: { targetKey: string; presse
               const finger = fingerMap[actualKey]
               const isTarget = actualKey === targetKey
               const isPressed = actualKey === pressedKey
+              const isNewKey = colorCoded && NEW_KEY_CHARACTERS.includes(actualKey)
               const wideClass = value === 'Space' ? 'space' : value.length > 1 ? `wide wide-${value.toLowerCase()}` : ''
               return (
-                <span className={`key ${wideClass} ${finger ? `finger-${finger}` : ''} ${isTarget ? 'target' : ''} ${isPressed ? `pressed ${status}` : ''}`} data-finger={finger} key={`${value}-${keyIndex}`}>
+                <span className={`key ${wideClass} ${finger ? `finger-${finger}` : ''} ${isNewKey ? 'new-key' : ''} ${isTarget ? 'target' : ''} ${isPressed ? `pressed ${status}` : ''}`} data-finger={finger} key={`${value}-${keyIndex}`}>
                   {keyLabel(value)}
                 </span>
               )
@@ -110,7 +113,7 @@ function Keyboard({ targetKey, pressedKey, status }: { targetKey: string; presse
   )
 }
 
-function Hands({ activeFinger }: { activeFinger: FingerId | null }) {
+function Hands({ activeFinger, colorCoded = false }: { activeFinger: FingerId | null; colorCoded?: boolean }) {
   const renderHand = (side: 'left' | 'right') => {
     const fingers: FingerId[] = side === 'left'
       ? ['left-pinky', 'left-ring', 'left-middle', 'left-index', 'left-thumb']
@@ -126,7 +129,7 @@ function Hands({ activeFinger }: { activeFinger: FingerId | null }) {
       </div>
     )
   }
-  return <div className="hands">{renderHand('left')}{renderHand('right')}</div>
+  return <div className={`hands ${colorCoded ? 'color-coded' : ''}`}>{renderHand('left')}{renderHand('right')}</div>
 }
 
 function KeySequence({ position, status }: { position: number; status: DrillStatus }) {
@@ -154,6 +157,8 @@ function KeySequence({ position, status }: { position: number; status: DrillStat
 export default function App() {
   const [screen, setScreen] = useState<Screen>('lesson')
   const [activeDrillId, setActiveDrillId] = useState<DrillId>(1)
+  const [basicsComplete, setBasicsComplete] = useState(false)
+  const [basicsPage, setBasicsPage] = useState(0)
   const [completedDrills, setCompletedDrills] = useState<Set<number>>(() => new Set())
   const [position, setPosition] = useState(0)
   const [mistakes, setMistakes] = useState(0)
@@ -202,6 +207,25 @@ export default function App() {
   const startKeyDrill = () => {
     setCompletedDrills((current) => new Set(current).add(1))
     selectDrill(2)
+  }
+
+  const openBasics = () => {
+    setBasicsPage(0)
+    setScreen('basics')
+  }
+
+  const nextBasicsPage = () => {
+    if (basicsPage < BASICS_SLIDE_TITLES.length - 1) {
+      setBasicsPage((current) => current + 1)
+      return
+    }
+    setBasicsComplete(true)
+    selectDrill(1)
+  }
+
+  const cancelBasics = () => {
+    setBasicsPage(0)
+    setScreen('lesson')
   }
 
   useEffect(() => {
@@ -296,7 +320,7 @@ export default function App() {
             <section className="lesson-overview" aria-labelledby="course-title">
               <div className="section-title-row">
                 <div><p className="eyebrow">English typing course</p><h1 id="course-title">Fast Touch Typing Course</h1></div>
-                <span className="course-progress">{completedDrills.size}/6 complete</span>
+                <span className="course-progress">{completedDrills.size + (basicsComplete ? 1 : 0)}/7 complete</span>
               </div>
               <nav className="lesson-tabs" aria-label="Danh sách lesson">
                 {Array.from({ length: 12 }, (_, index) => index + 1).map((lessonNumber) => (
@@ -309,15 +333,39 @@ export default function App() {
                 <p>Học vị trí hàng phím cơ sở, sau đó tiến dần từ phím đơn đến đoạn văn và bài kiểm tra tốc độ.</p>
               </div>
               <ol className="exercise-list">
-                {drills.map((drill) => {
+                <li className={!basicsComplete ? 'recommended' : ''}>
+                  <button type="button" onClick={openBasics}>
+                    <span className={`exercise-status ${basicsComplete ? 'done' : ''}`} aria-hidden="true">{basicsComplete ? '✓' : ''}</span>
+                    <strong>1. Touch Typing Basics</strong>
+                    <span>Kỹ thuật gõ 10 ngón</span>
+                    <small>3 min.</small>
+                  </button>
+                </li>
+                <li className={basicsComplete && !completedDrills.has(1) ? 'recommended' : ''}>
+                  <button type="button" onClick={() => selectDrill(1)}>
+                    <span className={`exercise-status ${completedDrills.has(1) ? 'done' : ''}`} aria-hidden="true">{completedDrills.has(1) ? '✓' : ''}</span>
+                    <strong>2. New Keys</strong>
+                    <span>A S D F · J K L ;</span>
+                    <small>3–5 min.</small>
+                  </button>
+                </li>
+                <li className="coming-soon">
+                  <button disabled type="button">
+                    <span className="exercise-status" aria-hidden="true" />
+                    <strong>3. Understanding Results</strong>
+                    <span>Hiểu các chỉ số luyện gõ</span>
+                    <small>Sắp cập nhật</small>
+                  </button>
+                </li>
+                {drills.slice(1).map((drill, index) => {
                   const isDone = completedDrills.has(drill.id)
                   const firstReady = drills.find((item) => !completedDrills.has(item.id))?.id ?? 6
                   return (
-                    <li className={drill.id === firstReady ? 'recommended' : ''} key={drill.id}>
+                    <li className={basicsComplete && drill.id === firstReady ? 'recommended' : ''} key={drill.id}>
                       <button type="button" onClick={() => selectDrill(drill.id)}>
                         <span className={`exercise-status ${isDone ? 'done' : ''}`} aria-hidden="true">{isDone ? '✓' : ''}</span>
-                        <strong>{drill.id}. {drill.name}</strong>
-                        <span>{drill.id === 1 ? 'A S D F · J K L ;' : drill.title}</span>
+                        <strong>{index + 4}. {drill.name}</strong>
+                        <span>{drill.title}</span>
                         <small>{drill.duration}</small>
                       </button>
                     </li>
@@ -325,6 +373,96 @@ export default function App() {
                 })}
               </ol>
               <div className="lesson-note"><span aria-hidden="true">i</span><p><strong>Gợi ý:</strong> hoàn thành theo thứ tự để ngón tay quen vị trí trước khi tăng tốc.</p></div>
+            </section>
+          )}
+
+          {screen === 'basics' && (
+            <section className="basics-screen" aria-labelledby="basics-title">
+              <article className="basics-card">
+                <header className="basics-header">
+                  <p>Lesson 1 · Touch Typing Basics</p>
+                  <h1 id="basics-title">{BASICS_SLIDE_TITLES[basicsPage]}</h1>
+                </header>
+
+                <div className="basics-body" aria-live="polite">
+                  {basicsPage === 0 && (
+                    <div className="basics-columns">
+                      <div className="basics-copy">
+                        <p><strong>Touch typing</strong> là kỹ thuật gõ nhanh và chính xác bằng cả mười ngón tay mà không cần nhìn xuống bàn phím.</p>
+                        <p>Sau khóa học, bạn sẽ có thể:</p>
+                        <ul>
+                          <li>Gõ nhanh hơn bằng cả 10 ngón.</li>
+                          <li>Giảm lỗi và giữ nhịp gõ ổn định.</li>
+                          <li>Tập trung vào nội dung trên màn hình.</li>
+                          <li>Hình thành tư thế làm việc thoải mái hơn.</li>
+                        </ul>
+                      </div>
+                      <div className="basics-hero" aria-hidden="true"><strong>10</strong><span>ngón tay<br />một nhịp gõ</span></div>
+                    </div>
+                  )}
+
+                  {basicsPage === 1 && (
+                    <div className="basics-position-page">
+                      <div className="basics-copy">
+                        <p>Các ngón tay bắt đầu ở <strong>hàng cơ sở</strong>. Từ đây, bạn có thể với tới những phím còn lại rồi quay về vị trí ban đầu.</p>
+                        <ol>
+                          <li>Tay trái đặt trên <strong>A S D F</strong>.</li>
+                          <li>Tay phải đặt trên <strong>J K L ;</strong>.</li>
+                          <li>Hai ngón cái nghỉ nhẹ trên phím Space.</li>
+                          <li>Giữ cổ tay thẳng, bàn tay thả lỏng.</li>
+                        </ol>
+                        <p className="basics-tip"><strong>Mẹo:</strong> gờ nhỏ trên F và J giúp bạn tìm lại hàng cơ sở mà không cần nhìn bàn phím.</p>
+                      </div>
+                      <div className="basics-guide-visual"><Keyboard colorCoded pressedKey={null} status="ready" targetKey="" /><Hands activeFinger={null} colorCoded /></div>
+                    </div>
+                  )}
+
+                  {basicsPage === 2 && (
+                    <div className="basics-position-page">
+                      <div className="basics-copy">
+                        <h2>Di chuyển ngón gần nhất</h2>
+                        <ol>
+                          <li>Giữ các ngón ở hàng cơ sở.</li>
+                          <li>Di chuyển ngón gần phím cần gõ nhất.</li>
+                          <li>Nhấn nhanh, nhẹ và giữ bàn tay thư giãn.</li>
+                          <li>Đưa ngón tay trở lại phím cơ sở.</li>
+                        </ol>
+                        <h2>Phím Space</h2>
+                        <p>Dùng một ngón cái cố định để nhấn Space. Không đổi ngón cái giữa lúc luyện để nhịp gõ nhất quán.</p>
+                      </div>
+                      <div className="basics-key-demo"><span>Ví dụ: dùng ngón trỏ phải để gõ U</span><Keyboard pressedKey={null} status="ready" targetKey="u" /><Hands activeFinger="right-index" /></div>
+                    </div>
+                  )}
+
+                  {basicsPage === 3 && (
+                    <div className="basics-tips">
+                      <div><strong>Nhìn vào màn hình</strong><p>Bạn sẽ ghi nhớ vị trí phím nhanh hơn khi không nhìn xuống bàn phím.</p></div>
+                      <div><strong>Giữ cổ tay thẳng</strong><p>Không tì mạnh cổ tay xuống bàn để các ngón di chuyển nhẹ nhàng.</p></div>
+                      <div><strong>Ưu tiên độ chính xác</strong><p>Gõ đúng trước, tốc độ sẽ tăng tự nhiên khi phản xạ đã ổn định.</p></div>
+                      <div><strong>Giữ nhịp đều</strong><p>Nhấn phím nhẹ và đều thay vì cố gõ thật nhanh trong thời gian ngắn.</p></div>
+                    </div>
+                  )}
+
+                  {basicsPage === 4 && (
+                    <div className="basics-ready">
+                      <p>Trước khi bắt đầu, hãy kiểm tra nhanh:</p>
+                      <ul>
+                        <li><strong>Tư thế thư giãn:</strong> ngồi thẳng, khuỷu tay gần cơ thể, vai và bàn tay thả lỏng.</li>
+                        <li><strong>Nghỉ giữa các bài:</strong> dừng lại khi tay hoặc vai bắt đầu căng.</li>
+                        <li><strong>Dùng Pause khi cần:</strong> không cần cố hoàn thành bài khi mất tập trung.</li>
+                        <li><strong>Không nhìn bàn phím:</strong> dùng bàn phím và bàn tay trên màn hình để nhận gợi ý.</li>
+                      </ul>
+                      <div className="ready-callout"><strong>Sẵn sàng rồi!</strong><span>Bài tiếp theo sẽ giới thiệu tám phím đầu tiên: A S D F · J K L ;</span></div>
+                    </div>
+                  )}
+                </div>
+
+                <footer className="basics-actions">
+                  <button className="cancel-button" type="button" onClick={cancelBasics}>Cancel</button>
+                  <strong>{basicsPage + 1} / {BASICS_SLIDE_TITLES.length}</strong>
+                  <button className="primary-button" type="button" onClick={nextBasicsPage}>{basicsPage === BASICS_SLIDE_TITLES.length - 1 ? 'Bắt đầu New Keys' : 'Next'}</button>
+                </footer>
+              </article>
             </section>
           )}
 
@@ -340,7 +478,7 @@ export default function App() {
                   <div className="home-row-grid" aria-label="Các phím mới và ngón tay tương ứng">
                     {homeRowKeys.map((item) => <div className={`home-key finger-${item.finger}`} key={item.key}><strong>{item.key}</strong><span>{item.label}</span></div>)}
                   </div>
-                  {showGuides && <div className="intro-guide"><Keyboard pressedKey={null} status="ready" targetKey="" /><Hands activeFinger={null} /></div>}
+                  {showGuides && <div className="intro-guide"><Keyboard colorCoded pressedKey={null} status="ready" targetKey="" /><Hands activeFinger={null} colorCoded /></div>}
                   <div className="intro-actions"><button className="primary-button" type="button" onClick={startKeyDrill}>Bắt đầu Key Drill →</button></div>
                 </div>
               ) : (
@@ -418,6 +556,7 @@ export default function App() {
             </>
           ) : (
             <nav>
+              <button className={screen === 'lesson' || screen === 'basics' ? 'active' : ''} type="button" onClick={openLesson}><span aria-hidden="true">←</span>Studying</button>
               <button className={screen === 'settings' ? 'active' : ''} type="button" onClick={() => setScreen('settings')}><span aria-hidden="true">⚙</span>Settings</button>
               <button className={screen === 'about' ? 'active' : ''} type="button" onClick={() => setScreen('about')}><span aria-hidden="true">i</span>About</button>
             </nav>
