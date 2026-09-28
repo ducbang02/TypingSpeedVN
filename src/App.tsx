@@ -25,7 +25,27 @@ type LessonData = {
   drills: Drill[]
 }
 
+type SavedProgress = {
+  version: 1
+  screen: Screen
+  activeLessonId: LessonId
+  activeDrillId: DrillId
+  basicsComplete: boolean
+  basicsPage: number
+  completedDrills: string[]
+  position: number
+  mistakes: number
+  typedText: string
+  status: DrillStatus
+  keystrokes: number
+  secondsLeft: number
+  started: boolean
+  isPaused: boolean
+  showGuides: boolean
+}
+
 const DRILL_TIME_LIMIT = 5 * 60
+const PROGRESS_STORAGE_KEY = 'typing-speed-vn-progress-v1'
 const KEY_DRILL_PAGE_SIZE = 6
 const PARAGRAPH_PAGE_SIZE = 2
 const VIETNAMESE_CHARACTERS = /[ăâđêôơưàáảãạằắẳẵặầấẩẫậèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ]/i
@@ -330,6 +350,40 @@ function formatDuration(duration: string, language: AppLanguage) {
   return language === 'vi' ? duration.replace('min.', 'phút') : duration
 }
 
+function loadSavedProgress(): SavedProgress | null {
+  try {
+    const raw = window.localStorage.getItem(PROGRESS_STORAGE_KEY)
+    if (!raw) return null
+    const value = JSON.parse(raw) as Partial<SavedProgress>
+    const lessonId = value.activeLessonId
+    const drillId = value.activeDrillId
+    const validDrillCount = lessonId === 3 ? 6 : 5
+    if (value.version !== 1 || !lessonId || ![1, 2, 3].includes(lessonId) || !drillId || drillId < 1 || drillId > validDrillCount) return null
+    const screens: Screen[] = ['lesson', 'basics', 'drill', 'settings', 'about']
+    const statuses: DrillStatus[] = ['ready', 'correct', 'incorrect', 'complete']
+    return {
+      version: 1,
+      screen: screens.includes(value.screen as Screen) ? value.screen as Screen : 'lesson',
+      activeLessonId: lessonId,
+      activeDrillId: drillId,
+      basicsComplete: value.basicsComplete === true,
+      basicsPage: Math.min(4, Math.max(0, Number(value.basicsPage) || 0)),
+      completedDrills: Array.isArray(value.completedDrills) ? value.completedDrills.filter((item): item is string => typeof item === 'string') : [],
+      position: Math.max(0, Number(value.position) || 0),
+      mistakes: Math.max(0, Number(value.mistakes) || 0),
+      typedText: typeof value.typedText === 'string' ? value.typedText : '',
+      status: statuses.includes(value.status as DrillStatus) ? value.status as DrillStatus : 'ready',
+      keystrokes: Math.max(0, Number(value.keystrokes) || 0),
+      secondsLeft: Math.min(DRILL_TIME_LIMIT, Math.max(0, Number(value.secondsLeft) || 0)),
+      started: value.started === true,
+      isPaused: value.isPaused === true,
+      showGuides: value.showGuides !== false,
+    }
+  } catch {
+    return null
+  }
+}
+
 function Keyboard({ targetKey, pressedKey, status, colorCoded = false, newKeyCharacters = '', language }: { targetKey: string; pressedKey: string | null; status: DrillStatus; colorCoded?: boolean; newKeyCharacters?: string; language: AppLanguage }) {
   return (
     <div className="keyboard-scroll">
@@ -515,25 +569,26 @@ function ParagraphPractice({ lines, position, typedText, language, className = '
 }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('lesson')
+  const [savedProgress] = useState<SavedProgress | null>(loadSavedProgress)
+  const [screen, setScreen] = useState<Screen>(savedProgress?.screen ?? 'lesson')
   const [language, setLanguage] = useState<AppLanguage>(() => window.localStorage.getItem('typing-speed-vn-language') === 'en' ? 'en' : 'vi')
-  const [activeLessonId, setActiveLessonId] = useState<LessonId>(1)
-  const [activeDrillId, setActiveDrillId] = useState<DrillId>(1)
-  const [basicsComplete, setBasicsComplete] = useState(false)
-  const [basicsPage, setBasicsPage] = useState(0)
-  const [completedDrills, setCompletedDrills] = useState<Set<string>>(() => new Set())
-  const [position, setPosition] = useState(0)
-  const [mistakes, setMistakes] = useState(0)
-  const [typedText, setTypedText] = useState('')
-  const [status, setStatus] = useState<DrillStatus>('ready')
+  const [activeLessonId, setActiveLessonId] = useState<LessonId>(savedProgress?.activeLessonId ?? 1)
+  const [activeDrillId, setActiveDrillId] = useState<DrillId>(savedProgress?.activeDrillId ?? 1)
+  const [basicsComplete, setBasicsComplete] = useState(savedProgress?.basicsComplete ?? false)
+  const [basicsPage, setBasicsPage] = useState(savedProgress?.basicsPage ?? 0)
+  const [completedDrills, setCompletedDrills] = useState<Set<string>>(() => new Set(savedProgress?.completedDrills ?? []))
+  const [position, setPosition] = useState(savedProgress?.position ?? 0)
+  const [mistakes, setMistakes] = useState(savedProgress?.mistakes ?? 0)
+  const [typedText, setTypedText] = useState(savedProgress?.typedText ?? '')
+  const [status, setStatus] = useState<DrillStatus>(savedProgress?.status ?? 'ready')
   const [pressedKey, setPressedKey] = useState<string | null>(null)
-  const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [finishedAt, setFinishedAt] = useState<number | null>(null)
-  const [keystrokes, setKeystrokes] = useState(0)
-  const [secondsLeft, setSecondsLeft] = useState(DRILL_TIME_LIMIT)
-  const [isPaused, setIsPaused] = useState(false)
-  const [pausedAt, setPausedAt] = useState<number | null>(null)
-  const [showGuides, setShowGuides] = useState(true)
+  const [startedAt, setStartedAt] = useState<number | null>(() => savedProgress?.started ? Date.now() - (DRILL_TIME_LIMIT - savedProgress.secondsLeft) * 1000 : null)
+  const [finishedAt, setFinishedAt] = useState<number | null>(() => savedProgress?.started && savedProgress.status === 'complete' ? Date.now() : null)
+  const [keystrokes, setKeystrokes] = useState(savedProgress?.keystrokes ?? 0)
+  const [secondsLeft, setSecondsLeft] = useState(savedProgress?.secondsLeft ?? DRILL_TIME_LIMIT)
+  const [isPaused, setIsPaused] = useState(savedProgress?.isPaused ?? false)
+  const [pausedAt, setPausedAt] = useState<number | null>(() => savedProgress?.isPaused ? Date.now() : null)
+  const [showGuides, setShowGuides] = useState(savedProgress?.showGuides ?? true)
   const [showEnglishKeyboardWarning, setShowEnglishKeyboardWarning] = useState(false)
   const practiceRef = useRef<HTMLElement>(null)
   const againButtonRef = useRef<HTMLButtonElement>(null)
@@ -563,6 +618,32 @@ export default function App() {
     window.localStorage.setItem('typing-speed-vn-language', language)
     document.documentElement.lang = language
   }, [language])
+
+  useEffect(() => {
+    const snapshot: SavedProgress = {
+      version: 1,
+      screen,
+      activeLessonId,
+      activeDrillId,
+      basicsComplete,
+      basicsPage,
+      completedDrills: [...completedDrills],
+      position,
+      mistakes,
+      typedText,
+      status,
+      keystrokes,
+      secondsLeft,
+      started: startedAt !== null,
+      isPaused,
+      showGuides,
+    }
+    try {
+      window.localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(snapshot))
+    } catch {
+      // The app still works when storage is unavailable.
+    }
+  }, [activeDrillId, activeLessonId, basicsComplete, basicsPage, completedDrills, isPaused, keystrokes, mistakes, position, screen, secondsLeft, showGuides, startedAt, status, typedText])
 
   const resetProgress = useCallback(() => {
     setPosition(0); setMistakes(0); setTypedText(''); setKeystrokes(0); setStatus('ready'); setPressedKey(null); setStartedAt(null); setFinishedAt(null); setSecondsLeft(DRILL_TIME_LIMIT); setIsPaused(false); setPausedAt(null)
