@@ -3,10 +3,11 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 type FingerId = 'left-pinky' | 'left-ring' | 'left-middle' | 'left-index' | 'left-thumb' | 'right-thumb' | 'right-index' | 'right-middle' | 'right-ring' | 'right-pinky'
 type DrillStatus = 'ready' | 'correct' | 'incorrect' | 'complete'
 type DrillId = 1 | 2 | 3 | 4 | 5 | 6
-type LessonId = 1 | 2 | 3
+type LessonId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
 type AppLanguage = 'en' | 'vi'
+type PracticeLanguage = 'en' | 'vi'
 type LocalizedText = Record<AppLanguage, string>
-type Screen = 'lesson' | 'basics' | 'drill' | 'settings' | 'about'
+type Screen = 'lesson' | 'basics' | 'drill' | 'daily' | 'test' | 'settings' | 'about'
 type Drill = { id: DrillId; name: LocalizedText; title: LocalizedText; hint: LocalizedText; content: string; duration: string }
 type NewKey = { key: string; finger: FingerId; label: LocalizedText }
 type LessonData = {
@@ -70,6 +71,10 @@ const UI_COPY = {
     aboutProject: 'About this project', aboutLead: 'A step-by-step typing app focused on accuracy, finger response, and speed.', versionCourse: 'Version 0.1.0 · English course', openCourse: 'Open course',
     menu: 'Program menu', studying: 'Studying', about: 'About', timer: 'Time', pause: 'Pause', resume: 'Resume', result: 'Result',
     timeUsed: 'Time Used', grossSpeed: 'Gross Speed', accuracy: 'Accuracy', netSpeed: 'Net Speed', drillControls: 'Drill controls',
+    navCourse: 'Course', navDaily: 'Daily practice', navTest: '1-minute test', backToSite: 'Student Guide',
+    dailyTitle: 'Daily Practice', dailyLead: 'Build a steady habit with a new passage each day.', testTitle: '1-Minute Speed Test', testLead: 'Measure your current typing speed in a focused 60-second test.',
+    practiceLanguage: 'Text language', duration: 'Duration', minutes: 'minutes', start: 'Start', restart: 'Restart', finish: 'Finish', words: 'words', errors: 'errors',
+    dailyRecommendation: 'Complete all 12 lessons first for the best practice experience.', dailyReady: 'Today’s practice is ready.', typeHere: 'Start typing here…', referenceText: 'Reference text', practiceResult: 'Practice result',
     basics: {
       intro: 'is a technique for typing faster and more accurately with all ten fingers without looking at the keyboard.', afterCourse: 'After completing the course, you will be able to:',
       benefits: ['Type faster with all 10 fingers.', 'Reduce errors and keep a steady rhythm.', 'Focus on the content on screen.', 'Build more comfortable working habits.'], hero: 'fingers\none rhythm',
@@ -109,6 +114,10 @@ const UI_COPY = {
     aboutProject: 'Về dự án', aboutLead: 'Ứng dụng luyện gõ theo từng bước, tập trung vào độ chính xác, phản xạ ngón tay và tốc độ.', versionCourse: 'Phiên bản 0.1.0 · Khóa học tiếng Anh', openCourse: 'Mở khóa học',
     menu: 'Menu chương trình', studying: 'Học tập', about: 'Giới thiệu', timer: 'Thời gian', pause: 'Tạm dừng', resume: 'Tiếp tục', result: 'Kết quả',
     timeUsed: 'Thời gian dùng', grossSpeed: 'Tốc độ thô', accuracy: 'Độ chính xác', netSpeed: 'Tốc độ thực', drillControls: 'Điều khiển bài luyện',
+    navCourse: 'Khóa học', navDaily: 'Luyện mỗi ngày', navTest: 'Test 1 phút', backToSite: 'Cẩm nang sinh viên',
+    dailyTitle: 'Luyện tập mỗi ngày', dailyLead: 'Tạo thói quen đều đặn với một đoạn văn mới mỗi ngày.', testTitle: 'Test tốc độ 1 phút', testLead: 'Đo tốc độ gõ hiện tại trong một bài kiểm tra tập trung 60 giây.',
+    practiceLanguage: 'Ngôn ngữ bài gõ', duration: 'Thời lượng', minutes: 'phút', start: 'Bắt đầu', restart: 'Làm lại', finish: 'Kết thúc', words: 'từ', errors: 'lỗi',
+    dailyRecommendation: 'Hãy hoàn thành đủ 12 bài học trước để có trải nghiệm luyện tập tốt nhất.', dailyReady: 'Bài luyện hôm nay đã sẵn sàng.', typeHere: 'Bắt đầu gõ tại đây…', referenceText: 'Văn bản mẫu', practiceResult: 'Kết quả luyện tập',
     basics: {
       intro: 'là kỹ thuật gõ nhanh và chính xác bằng cả mười ngón tay mà không cần nhìn xuống bàn phím.', afterCourse: 'Sau khóa học, bạn sẽ có thể:',
       benefits: ['Gõ nhanh hơn bằng cả 10 ngón.', 'Giảm lỗi và giữ nhịp gõ ổn định.', 'Tập trung vào nội dung trên màn hình.', 'Hình thành tư thế làm việc thoải mái hơn.'], hero: 'ngón tay\nmột nhịp gõ',
@@ -234,6 +243,51 @@ const LESSON_3_NEW_KEYS: NewKey[] = [
   { key: 'U', finger: 'right-index', label: { en: 'Right index', vi: 'Trỏ phải' } },
 ]
 
+const FINGER_SHORT_LABELS: Record<FingerId, LocalizedText> = {
+  'left-pinky': { en: 'Left pinky', vi: 'Út trái' }, 'left-ring': { en: 'Left ring', vi: 'Áp út trái' }, 'left-middle': { en: 'Left middle', vi: 'Giữa trái' }, 'left-index': { en: 'Left index', vi: 'Trỏ trái' }, 'left-thumb': { en: 'Left thumb', vi: 'Cái trái' },
+  'right-thumb': { en: 'Right thumb', vi: 'Cái phải' }, 'right-index': { en: 'Right index', vi: 'Trỏ phải' }, 'right-middle': { en: 'Right middle', vi: 'Giữa phải' }, 'right-ring': { en: 'Right ring', vi: 'Áp út phải' }, 'right-pinky': { en: 'Right pinky', vi: 'Út phải' },
+}
+
+function createLesson({ id, keys, fingers, wordLines, sentenceLines, paragraphLines }: {
+  id: LessonId
+  keys: string[]
+  fingers: FingerId[]
+  wordLines: string[]
+  sentenceLines: string[]
+  paragraphLines: string[]
+}): LessonData {
+  const keySummary = keys.join(' · ')
+  const lowerKeys = keys.map((key) => key.toLowerCase())
+  const keyDrillGroups = [
+    `${lowerKeys[0]}${lowerKeys[0]} `, `${lowerKeys[1]}${lowerKeys[1]} `,
+    `${lowerKeys[0]}${lowerKeys[1]} `, `${lowerKeys[1]}${lowerKeys[0]} `,
+    `f${lowerKeys[0]} `, `j${lowerKeys[1]} `, `${lowerKeys[0]}j `, `${lowerKeys[1]}f `,
+  ]
+  const drills: Drill[] = [
+    { id: 1, name: { en: 'New Keys', vi: 'Phím mới' }, title: { en: `Meet the ${keySummary} keys`, vi: `Làm quen với phím ${keySummary}` }, hint: { en: `Learn the fingers for ${keySummary}`, vi: `Ghi nhớ ngón tay cho ${keySummary}` }, content: '', duration: '2–3 min.' },
+    { id: 2, name: { en: 'Key Drill', vi: 'Luyện phím' }, title: { en: `Build a steady ${keySummary} reach`, vi: `Luyện nhịp vươn tới ${keySummary}` }, hint: { en: 'Return to the home row after every reach', vi: 'Trở về hàng cơ sở sau mỗi lần vươn ngón' }, content: keyDrillGroups.join(''), duration: '3–5 min.' },
+    { id: 3, name: { en: 'Word Drill', vi: 'Luyện từ' }, title: { en: `Build words with ${keySummary}`, vi: `Ghép từ với ${keySummary}` }, hint: { en: 'Finish one line to reveal the next', vi: 'Gõ hết một dòng để hiện dòng tiếp theo' }, content: wordLines.join(''), duration: '3–5 min.' },
+    { id: 4, name: { en: 'Sentence Drill', vi: 'Luyện câu' }, title: { en: `Use ${keySummary} in short sentences`, vi: `Dùng ${keySummary} trong câu ngắn` }, hint: { en: 'Finish each line and press Enter', vi: 'Gõ hết mỗi dòng rồi nhấn Enter' }, content: sentenceLines.map((line) => `${line}\n`).join(''), duration: '3–5 min.' },
+    { id: 5, name: { en: 'Paragraph Drill', vi: 'Luyện đoạn văn' }, title: { en: `Practice ${keySummary} in paragraphs`, vi: `Luyện ${keySummary} trong đoạn văn` }, hint: { en: 'Keep a calm, accurate rhythm', vi: 'Giữ nhịp gõ bình tĩnh và chính xác' }, content: paragraphLines.map((line) => `${line}\n`).join(''), duration: '4–6 min.' },
+  ]
+  drills.push({ id: 6, name: { en: 'Text Drill', vi: 'Luyện văn bản' }, title: { en: `Practice a focused text with ${keySummary}`, vi: `Luyện văn bản tập trung với ${keySummary}` }, hint: { en: 'Type without keyboard or hand guides', vi: 'Gõ không có hướng dẫn bàn phím và bàn tay' }, content: paragraphLines.map((line) => `${line}\n`).join(''), duration: '5–7 min.' })
+  return {
+    id,
+    title: { en: `Lesson ${id}: ${keySummary}`, vi: `Bài ${id}: ${keySummary}` },
+    description: { en: `Add ${keySummary} to the keys you already know and keep returning to the home row.`, vi: `Thêm ${keySummary} vào nhóm phím đã học và luôn đưa ngón tay trở về hàng cơ sở.` },
+    keySummary,
+    newKeyCharacters: lowerKeys.join(''),
+    newKeys: keys.map((key, index) => ({ key, finger: fingers[index], label: FINGER_SHORT_LABELS[fingers[index]] })),
+    newKeysIntro: { en: `Keep your hands relaxed. Reach for ${keySummary} with the highlighted fingers, then return to the home row.`, vi: `Giữ tay thư giãn. Vươn tới ${keySummary} bằng các ngón được tô màu, rồi trở về hàng cơ sở.` },
+    keyDrillGroups,
+    wordLines,
+    sentenceLines,
+    paragraphLines,
+    textLines: paragraphLines,
+    drills,
+  }
+}
+
 const LESSONS: Record<LessonId, LessonData> = {
   1: {
     id: 1,
@@ -299,6 +353,60 @@ const LESSONS: Record<LessonId, LessonData> = {
       { id: 6, name: { en: 'Text Drill', vi: 'Luyện văn bản' }, title: { en: 'Type a focused practice text', vi: 'Gõ một bài luyện văn bản tập trung' }, hint: { en: 'Type each line without keyboard or hand guides', vi: 'Gõ từng dòng văn bản; bàn phím và bàn tay được ẩn để tập trung' }, content: LESSON_3_TEXT_LINES.map((line) => `${line}\n`).join(''), duration: '4–6 min.' },
     ],
   },
+  4: createLesson({
+    id: 4, keys: ['T', 'Y'], fingers: ['left-index', 'right-index'],
+    wordLines: ['try yet true', 'style study duty', 'trust your result', 'stay ready today', 'type steadily', 'your style is tidy'],
+    sentenceLines: ['try a steady rhythm;', 'your result is ready;', 'stay relaxed as you type;', 'type lightly and steadily;', 'trust your trained fingers;', 'today is a study day;'],
+    paragraphLines: ['try a steady rhythm; stay relaxed as you type;', 'your result is ready; trust your trained fingers;', 'type lightly and steadily; today is a study day;', 'study your style; adjust it slowly;', 'steady practice lets your fingers stay ready;', 'your accuracy rises as your rhythm stays calm;'],
+  }),
+  5: createLesson({
+    id: 5, keys: ['W', 'O'], fingers: ['left-ring', 'right-ring'],
+    wordLines: ['row low word', 'world slow work', 'write your words', 'follow a smooth flow', 'work toward accuracy', 'slow down to grow'],
+    sentenceLines: ['write every word slowly;', 'follow a smooth flow;', 'work toward accuracy;', 'your hands know the row;', 'slow practice works well;', 'write without looking down;'],
+    paragraphLines: ['write every word slowly; follow a smooth flow;', 'work toward accuracy; your hands know the row;', 'slow practice works well; write without looking down;', 'your words will flow as your hands relax;', 'a lower speed allows stronger accuracy;', 'work on each row and let your rhythm grow;'],
+  }),
+  6: createLesson({
+    id: 6, keys: ['Q', 'P'], fingers: ['left-pinky', 'right-pinky'],
+    wordLines: ['quick quiet page', 'paper place equal', 'press with purpose', 'keep a quiet pace', 'quality over speed', 'place each key well'],
+    sentenceLines: ['keep a quiet pace;', 'press each key lightly;', 'quality grows with practice;', 'place your pinkies carefully;', 'quick typing stays precise;', 'pause before you speed up;'],
+    paragraphLines: ['keep a quiet pace; press each key lightly;', 'quality grows with practice; place your pinkies carefully;', 'quick typing stays precise; pause before you speed up;', 'a calm pace helps you press the right key;', 'practice quality first and speed will follow;', 'keep your shoulders relaxed through every line;'],
+  }),
+  7: createLesson({
+    id: 7, keys: ['G', 'H'], fingers: ['left-index', 'right-index'],
+    wordLines: ['high light good', 'great habit growth', 'guide both hands', 'hold a light touch', 'gather good habits', 'height and length'],
+    sentenceLines: ['good habits grow daily;', 'hold a light touch;', 'guide both hands gently;', 'great rhythm feels smooth;', 'reach inward for each key;', 'high accuracy is the goal;'],
+    paragraphLines: ['good habits grow daily; hold a light touch;', 'guide both hands gently; great rhythm feels smooth;', 'reach inward for each key; high accuracy is the goal;', 'your index fingers handle the center keys;', 'light and steady presses help your hands relax;', 'gather a strong rhythm through careful practice;'],
+  }),
+  8: createLesson({
+    id: 8, keys: ['V', 'M'], fingers: ['left-index', 'right-index'],
+    wordLines: ['move calm view', 'moment value time', 'move from the home row', 'make every move light', 'value a calm rhythm', 'review each moment'],
+    sentenceLines: ['move each finger lightly;', 'make every moment count;', 'value a calm rhythm;', 'review your hand movement;', 'move down from the home row;', 'time and accuracy improve;'],
+    paragraphLines: ['move each finger lightly; make every moment count;', 'value a calm rhythm; review your hand movement;', 'move down from the home row; time and accuracy improve;', 'every small movement should feel calm and direct;', 'return to the home row after every lower reach;', 'review your form and maintain a smooth rhythm;'],
+  }),
+  9: createLesson({
+    id: 9, keys: ['C', ','], fingers: ['left-middle', 'right-middle'],
+    wordLines: ['calm, clear, correct', 'care, music, choice', 'check each reach', 'correct, calm, concise', 'music creates rhythm', 'accuracy comes first'],
+    sentenceLines: ['choose a calm pace;', 'check each character;', 'accuracy comes first;', 'music creates a rhythm;', 'reach down with middle fingers;', 'type clearly, calmly, correctly;'],
+    paragraphLines: ['choose a calm pace; check each character;', 'accuracy comes first; music creates a rhythm;', 'reach down with middle fingers; type clearly, calmly;', 'correct small errors before increasing your speed;', 'a careful typist keeps every movement concise;', 'practice calmly, breathe easily, and stay accurate;'],
+  }),
+  10: createLesson({
+    id: 10, keys: ['X', '.'], fingers: ['left-ring', 'right-ring'],
+    wordLines: ['next. extra. relax.', 'exact. text. exercise.', 'extend your reach.', 'relax after each line.', 'expect steady progress.', 'text can flow.'],
+    sentenceLines: ['relax after each line.', 'expect steady progress.', 'extend your ring fingers.', 'the next exercise feels easier.', 'type the exact text.', 'finish with a full stop.'],
+    paragraphLines: ['relax after each line. expect steady progress.', 'extend your ring fingers. the next exercise feels easier.', 'type the exact text. finish with a full stop.', 'extra practice can make complex movement feel natural.', 'the next line asks for accuracy before speed.', 'relax your hands. keep your eyes on the text.'],
+  }),
+  11: createLesson({
+    id: 11, keys: ['Z', '/'], fingers: ['left-pinky', 'right-pinky'],
+    wordLines: ['zone / zoom', 'zero / size', 'use each pinky', 'reach the edge keys', 'zero rush / stay calm', 'finish the lower row'],
+    sentenceLines: ['reach the edge keys;', 'use each pinky gently;', 'zero rush means more control;', 'finish the lower row;', 'keep a relaxed posture;', 'accuracy is always the priority;'],
+    paragraphLines: ['reach the edge keys; use each pinky gently;', 'zero rush means more control; finish the lower row;', 'keep a relaxed posture; accuracy is always the priority;', 'the outside keys need small and careful movement;', 'return each pinky to its home position after a reach;', 'finish this lesson with a calm and even rhythm;'],
+  }),
+  12: createLesson({
+    id: 12, keys: ['B', 'N'], fingers: ['left-index', 'right-index'],
+    wordLines: ['begin new balance', 'build strong habits', 'bring both hands', 'learn a natural rhythm', 'balance speed and accuracy', 'begin with confidence'],
+    sentenceLines: ['begin with a balanced rhythm;', 'bring both hands back home;', 'build accuracy before speed;', 'learn a natural typing flow;', 'balance every movement;', 'now use the whole keyboard;'],
+    paragraphLines: ['begin with a balanced rhythm; bring both hands back home;', 'build accuracy before speed; learn a natural typing flow;', 'balance every movement; now use the whole keyboard;', 'steady daily practice builds confidence and control;', 'keep your eyes on the screen and trust your fingers;', 'you now know every letter key on the main keyboard;', 'finish each line with patience and review your result;'],
+  }),
 }
 
 const fingerLabels: Record<FingerId, LocalizedText> = {
@@ -357,9 +465,10 @@ function loadSavedProgress(): SavedProgress | null {
     const value = JSON.parse(raw) as Partial<SavedProgress>
     const lessonId = value.activeLessonId
     const drillId = value.activeDrillId
-    const validDrillCount = lessonId === 3 ? 6 : 5
-    if (value.version !== 1 || !lessonId || ![1, 2, 3].includes(lessonId) || !drillId || drillId < 1 || drillId > validDrillCount) return null
-    const screens: Screen[] = ['lesson', 'basics', 'drill', 'settings', 'about']
+    const validLessonIds = Array.from({ length: 12 }, (_, index) => index + 1)
+    const validDrillCount = lessonId && LESSONS[lessonId as LessonId]?.drills.length
+    if (value.version !== 1 || !lessonId || !validLessonIds.includes(lessonId) || !drillId || !validDrillCount || drillId < 1 || drillId > validDrillCount) return null
+    const screens: Screen[] = ['lesson', 'basics', 'drill', 'daily', 'test', 'settings', 'about']
     const statuses: DrillStatus[] = ['ready', 'correct', 'incorrect', 'complete']
     return {
       version: 1,
@@ -568,6 +677,128 @@ function ParagraphPractice({ lines, position, typedText, language, className = '
   )
 }
 
+const PRACTICE_TEXTS: Record<PracticeLanguage, string[]> = {
+  en: [
+    'A steady typing rhythm begins with relaxed shoulders and light hands. Keep your eyes on the screen, trust the home row, and let every finger return to its starting key. Accuracy matters more than rushing because clean movement becomes natural speed over time.',
+    'Small daily habits create lasting skill. Sit comfortably, breathe normally, and read a few words ahead while your fingers continue to type. When an error appears, stay calm and recover without breaking the rhythm of the whole sentence.',
+    'Clear writing starts with focused attention. Type each word as a complete shape instead of chasing one letter at a time. A smooth pace helps the mind and hands work together, making longer passages feel easier with every practice session.',
+    'Good typists do not force speed. They build it through accurate repetition, balanced posture, and patient review. Keep both hands near the home row and use the closest finger for every key so each movement remains short and efficient.',
+    'Practice is most useful when it feels challenging but controlled. Choose a pace that lets you finish each sentence accurately, then increase the tempo a little. Consistent work for a few minutes each day is enough to create visible progress.',
+  ],
+  vi: [
+    'Nhịp gõ ổn định bắt đầu từ tư thế ngồi thoải mái và đôi tay thả lỏng. Hãy nhìn vào màn hình, tin vào vị trí hàng phím cơ sở và đưa mỗi ngón tay trở về đúng chỗ sau khi nhấn. Độ chính xác luôn quan trọng hơn việc vội vàng.',
+    'Một thói quen nhỏ mỗi ngày có thể tạo nên kỹ năng bền vững. Bạn hãy ngồi thẳng, thở đều và đọc trước vài từ trong khi các ngón tay tiếp tục di chuyển. Khi gõ sai, hãy bình tĩnh sửa lỗi mà không làm mất nhịp của cả câu.',
+    'Viết rõ ràng cần sự tập trung. Hãy gõ từng từ như một hình ảnh hoàn chỉnh thay vì đuổi theo từng chữ cái riêng lẻ. Nhịp độ êm giúp suy nghĩ và đôi tay phối hợp tốt hơn, nhờ đó những đoạn văn dài sẽ dần trở nên dễ dàng.',
+    'Người gõ tốt không ép mình phải nhanh ngay lập tức. Họ xây dựng tốc độ bằng sự lặp lại chính xác, tư thế cân bằng và việc xem lại kết quả. Hai tay nên ở gần hàng cơ sở để mỗi chuyển động luôn ngắn và hiệu quả.',
+    'Bài luyện hiệu quả nên vừa đủ thử thách nhưng vẫn trong tầm kiểm soát. Hãy chọn tốc độ giúp bạn hoàn thành câu thật chính xác, rồi tăng nhịp từng chút một. Chỉ vài phút đều đặn mỗi ngày cũng tạo ra tiến bộ rõ rệt.',
+  ],
+}
+
+function practiceTextForToday(language: PracticeLanguage, repeatCount: number) {
+  const dayNumber = Math.floor(new Date().setHours(0, 0, 0, 0) / 86_400_000)
+  const passage = PRACTICE_TEXTS[language][dayNumber % PRACTICE_TEXTS[language].length]
+  return Array.from({ length: repeatCount }, () => passage).join('\n\n')
+}
+
+function FreeTypingPractice({ mode, interfaceLanguage, completedLessonCount }: { mode: 'daily' | 'test'; interfaceLanguage: AppLanguage; completedLessonCount: number }) {
+  const ui = UI_COPY[interfaceLanguage]
+  const [practiceLanguage, setPracticeLanguage] = useState<PracticeLanguage>('vi')
+  const [dailyMinutes, setDailyMinutes] = useState<5 | 10>(5)
+  const [typed, setTyped] = useState('')
+  const [running, setRunning] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [secondsLeft, setSecondsLeft] = useState(mode === 'test' ? 60 : 300)
+  const [endAt, setEndAt] = useState<number | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const totalSeconds = mode === 'test' ? 60 : dailyMinutes * 60
+  const targetText = practiceTextForToday(practiceLanguage, mode === 'daily' ? 12 : 3)
+
+  const finishPractice = useCallback(() => {
+    setRunning(false)
+    setFinished(true)
+    setEndAt(null)
+    if (mode === 'daily') window.localStorage.setItem('typing-speed-vn-last-daily', new Date().toISOString().slice(0, 10))
+  }, [mode])
+
+  useEffect(() => {
+    if (!running || endAt === null) return
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000))
+      setSecondsLeft(remaining)
+      if (remaining === 0) finishPractice()
+    }
+    update()
+    const interval = window.setInterval(update, 250)
+    return () => window.clearInterval(interval)
+  }, [endAt, finishPractice, running])
+
+  const reset = useCallback(() => {
+    setTyped('')
+    setRunning(false)
+    setFinished(false)
+    setEndAt(null)
+    setSecondsLeft(totalSeconds)
+  }, [totalSeconds])
+
+  useEffect(() => reset(), [mode, practiceLanguage, dailyMinutes, reset])
+
+  const start = () => {
+    reset()
+    setRunning(true)
+    setEndAt(Date.now() + totalSeconds * 1000)
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
+  const handleChange = (value: string) => {
+    if (!running) return
+    const nextValue = value.slice(0, targetText.length)
+    setTyped(nextValue)
+    if (nextValue.length === targetText.length) finishPractice()
+  }
+
+  const elapsedSeconds = totalSeconds - secondsLeft
+  const scoringSeconds = Math.max(1, elapsedSeconds)
+  const errors = typed.split('').reduce((total, character, index) => total + (character === targetText[index] ? 0 : 1), 0)
+  const correctCharacters = Math.max(0, typed.length - errors)
+  const grossWpm = Math.round((typed.length / 5) / (scoringSeconds / 60))
+  const accuracy = typed.length === 0 ? 100 : Math.round((correctCharacters / typed.length) * 100)
+  const netWpm = Math.max(0, Math.round(grossWpm - errors / (scoringSeconds / 60)))
+  const wordCount = typed.trim() ? typed.trim().split(/\s+/).length : 0
+
+  return (
+    <section className="free-practice" aria-labelledby={`${mode}-title`}>
+      <div className="practice-heading">
+        <div><p className="eyebrow">Typing Speed VN</p><h1 id={`${mode}-title`}>{mode === 'daily' ? ui.dailyTitle : ui.testTitle}</h1><p>{mode === 'daily' ? ui.dailyLead : ui.testLead}</p></div>
+        <div className={`practice-clock ${running ? 'running' : ''}`}><span>{ui.timer}</span><time dateTime={`PT${secondsLeft}S`}>{formatTime(secondsLeft)}</time></div>
+      </div>
+
+      {mode === 'daily' && completedLessonCount < 12 && <div className="practice-notice" role="note"><span aria-hidden="true">i</span>{ui.dailyRecommendation}</div>}
+      {mode === 'daily' && completedLessonCount >= 12 && <div className="practice-notice ready" role="status"><span aria-hidden="true">✓</span>{ui.dailyReady}</div>}
+
+      <div className="practice-toolbar">
+        <label><span>{ui.practiceLanguage}</span><select disabled={running} onChange={(event) => setPracticeLanguage(event.target.value as PracticeLanguage)} value={practiceLanguage}><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label>
+        {mode === 'daily' && <label><span>{ui.duration}</span><select disabled={running} onChange={(event) => setDailyMinutes(Number(event.target.value) as 5 | 10)} value={dailyMinutes}><option value={5}>5 {ui.minutes}</option><option value={10}>10 {ui.minutes}</option></select></label>}
+        <button className="primary-button" type="button" onClick={start}>{typed || finished ? ui.restart : ui.start}</button>
+        {running && <button className="secondary-button" type="button" onClick={finishPractice}>{ui.finish}</button>}
+      </div>
+
+      <div className="practice-reference" aria-label={ui.referenceText}>
+        {targetText.split('').map((character, index) => <span className={index < typed.length ? (typed[index] === character ? 'matched' : 'missed') : index === typed.length ? 'current' : ''} key={index}>{character}</span>)}
+      </div>
+      <label className="practice-input-label"><span>{ui.typeHere}</span><textarea ref={inputRef} disabled={!running} onChange={(event) => handleChange(event.target.value)} spellCheck={false} value={typed} /></label>
+
+      <section className={`practice-results ${finished ? 'is-finished' : ''}`} aria-label={ui.practiceResult} aria-live="polite">
+        <div><span>{ui.timeUsed}</span><strong>{formatTime(elapsedSeconds)}</strong></div>
+        <div><span>{ui.grossSpeed}</span><strong>{grossWpm} WPM</strong></div>
+        <div><span>{ui.accuracy}</span><strong>{accuracy}%</strong></div>
+        <div><span>{ui.netSpeed}</span><strong>{netWpm} WPM</strong></div>
+        <div><span>{ui.words}</span><strong>{wordCount}</strong></div>
+        <div><span>{ui.errors}</span><strong>{errors}</strong></div>
+      </section>
+    </section>
+  )
+}
+
 export default function App() {
   const [savedProgress] = useState<SavedProgress | null>(loadSavedProgress)
   const [screen, setScreen] = useState<Screen>(savedProgress?.screen ?? 'lesson')
@@ -613,6 +844,7 @@ export default function App() {
   const netSpeed = Math.max(0, Math.round(grossSpeed - mistakes / minutesUsed))
   const completedInLesson = drills.filter((drill) => completedDrills.has(progressKey(activeLessonId, drill.id))).length
   const lessonCompletionTotal = drills.length + (activeLessonId === 1 ? 1 : 0)
+  const completedLessonCount = (Object.values(LESSONS) as LessonData[]).filter((lesson) => lesson.drills.every((drill) => completedDrills.has(progressKey(lesson.id, drill.id))) && (lesson.id !== 1 || basicsComplete)).length
 
   useEffect(() => {
     window.localStorage.setItem('typing-speed-vn-language', language)
@@ -849,13 +1081,22 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <div className="program-window">
+      <div className={`program-window ${screen === 'drill' ? 'focus-mode' : ''}`}>
         <main className="course-pane">
-          <header className="course-header">
+          <header className={`course-header ${screen === 'drill' || screen === 'basics' ? 'focus-header' : ''}`}>
             <button className="brand" type="button" onClick={openLesson} aria-label={`Typing Speed VN — ${ui.openCourse}`}>
               <span className="brand-mark" aria-hidden="true">TS</span><span>Typing Speed <strong>VN</strong></span>
             </button>
-            <span className="course-label">{ui.courseLabel}</span>
+            {screen !== 'drill' && screen !== 'basics' ? (
+              <nav className="top-nav" aria-label={ui.menu}>
+                <button className={screen === 'lesson' ? 'active' : ''} type="button" onClick={openLesson}>{ui.navCourse}</button>
+                <button className={screen === 'daily' ? 'active' : ''} type="button" onClick={() => setScreen('daily')}>{ui.navDaily}</button>
+                <button className={screen === 'test' ? 'active' : ''} type="button" onClick={() => setScreen('test')}>{ui.navTest}</button>
+                <button className={screen === 'settings' ? 'active icon-nav' : 'icon-nav'} type="button" onClick={() => setScreen('settings')} aria-label={ui.settings} title={ui.settings}>⚙</button>
+                <button className={screen === 'about' ? 'active icon-nav' : 'icon-nav'} type="button" onClick={() => setScreen('about')} aria-label={ui.about} title={ui.about}>i</button>
+                <a href="https://camnangsinhvien.site" rel="noreferrer">{ui.backToSite} ↗</a>
+              </nav>
+            ) : <span className="course-label">{ui.courseLabel}</span>}
           </header>
 
           {screen === 'lesson' && (
@@ -866,7 +1107,7 @@ export default function App() {
               </div>
               <nav className="lesson-tabs" aria-label={ui.lessonList}>
                 {Array.from({ length: 12 }, (_, index) => index + 1).map((lessonNumber) => (
-                  <button aria-current={lessonNumber === activeLessonId ? 'page' : undefined} disabled={lessonNumber > 3} key={lessonNumber} onClick={() => lessonNumber <= 3 && selectLesson(lessonNumber as LessonId)} title={lessonNumber <= 3 ? `${ui.lesson} ${lessonNumber}` : ui.comingSoon} type="button">{lessonNumber}</button>
+                  <button aria-current={lessonNumber === activeLessonId ? 'page' : undefined} key={lessonNumber} onClick={() => selectLesson(lessonNumber as LessonId)} title={`${ui.lesson} ${lessonNumber}`} type="button">{lessonNumber}</button>
                 ))}
               </nav>
               <div className="lesson-summary">
@@ -1044,6 +1285,10 @@ export default function App() {
             </section>
           )}
 
+          {screen === 'daily' && <FreeTypingPractice completedLessonCount={completedLessonCount} interfaceLanguage={language} mode="daily" />}
+
+          {screen === 'test' && <FreeTypingPractice completedLessonCount={completedLessonCount} interfaceLanguage={language} mode="test" />}
+
           {screen === 'about' && (
             <section className="simple-page" aria-labelledby="about-title">
               <p className="eyebrow">{ui.aboutProject}</p><h1 id="about-title">Typing Speed VN</h1><p className="page-lead">{ui.aboutLead}</p>
@@ -1053,10 +1298,9 @@ export default function App() {
           )}
         </main>
 
-        <aside className={`program-nav ${screen === 'drill' ? 'drill-mode' : ''}`} aria-label={ui.menu}>
+        {screen === 'drill' && <aside className="program-nav drill-mode" aria-label={ui.menu}>
           <div className="rail-heading"><span className="rail-logo" aria-hidden="true">T</span><span><strong>Typing Speed</strong><small>VN</small></span></div>
-          {screen === 'drill' ? (
-            <>
+          <>
               {isTypingDrill && (
                 <section className={`drill-timer ${startedAt !== null && !isComplete ? 'running' : ''}`} aria-label={ui.timer}>
                   <div><strong>{ui.timer}</strong><button disabled={startedAt === null || isComplete} type="button" onClick={togglePause}>{isPaused ? ui.resume : ui.pause}</button></div>
@@ -1079,15 +1323,8 @@ export default function App() {
                 <button aria-keyshortcuts={isComplete ? 'Enter' : undefined} className="next-button" disabled={isTypingDrill && !isComplete} ref={nextButtonRef} type="button" onClick={goToNextDrill}>{ui.next}{isComplete && <kbd>Enter</kbd>}</button>
                 <button aria-keyshortcuts={isComplete ? 'Escape' : undefined} className="cancel-button" ref={cancelButtonRef} type="button" onClick={cancelDrill}>{ui.cancel}{isComplete && <kbd>Esc</kbd>}</button>
               </nav>
-            </>
-          ) : (
-            <nav>
-              <button className={screen === 'lesson' || screen === 'basics' ? 'active' : ''} type="button" onClick={openLesson}><span aria-hidden="true">←</span>{ui.studying}</button>
-              <button className={screen === 'settings' ? 'active' : ''} type="button" onClick={() => setScreen('settings')}><span aria-hidden="true">⚙</span>{ui.settings}</button>
-              <button className={screen === 'about' ? 'active' : ''} type="button" onClick={() => setScreen('about')}><span aria-hidden="true">i</span>{ui.about}</button>
-            </nav>
-          )}
-        </aside>
+          </>
+        </aside>}
       </div>
     </div>
   )
