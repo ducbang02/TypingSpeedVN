@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 type FingerId = 'left-pinky' | 'left-ring' | 'left-middle' | 'left-index' | 'left-thumb' | 'right-thumb' | 'right-index' | 'right-middle' | 'right-ring' | 'right-pinky'
 type DrillStatus = 'ready' | 'correct' | 'incorrect' | 'complete'
@@ -73,7 +73,7 @@ const UI_COPY = {
     timeUsed: 'Time Used', grossSpeed: 'Gross Speed', accuracy: 'Accuracy', netSpeed: 'Net Speed', drillControls: 'Drill controls',
     navCourse: 'Course', navDaily: 'Daily practice', navTest: '1-minute test', backToSite: 'Student Guide',
     dailyTitle: 'Daily Practice', dailyLead: 'Build a steady habit with a new passage each day.', testTitle: '1-Minute Speed Test', testLead: 'Measure your current typing speed in a focused 60-second test.',
-    practiceLanguage: 'Text language', duration: 'Duration', minutes: 'minutes', start: 'Start', restart: 'Restart', finish: 'Finish', words: 'words', errors: 'errors',
+    practiceLanguage: 'Text language', englishLanguage: 'English', vietnameseLanguage: 'Vietnamese', duration: 'Duration', minutes: 'minutes', start: 'Start', restart: 'Restart', finish: 'Finish', words: 'words', errors: 'errors',
     dailyRecommendation: 'Complete all 12 lessons first for the best practice experience.', dailyReady: 'Today’s practice is ready.', typeHere: 'Start typing here…', referenceText: 'Reference text', practiceResult: 'Practice result',
     basics: {
       intro: 'is a technique for typing faster and more accurately with all ten fingers without looking at the keyboard.', afterCourse: 'After completing the course, you will be able to:',
@@ -116,7 +116,7 @@ const UI_COPY = {
     timeUsed: 'Thời gian dùng', grossSpeed: 'Tốc độ thô', accuracy: 'Độ chính xác', netSpeed: 'Tốc độ thực', drillControls: 'Điều khiển bài luyện',
     navCourse: 'Khóa học', navDaily: 'Luyện mỗi ngày', navTest: 'Test 1 phút', backToSite: 'Cẩm nang sinh viên',
     dailyTitle: 'Luyện tập mỗi ngày', dailyLead: 'Tạo thói quen đều đặn với một đoạn văn mới mỗi ngày.', testTitle: 'Test tốc độ 1 phút', testLead: 'Đo tốc độ gõ hiện tại trong một bài kiểm tra tập trung 60 giây.',
-    practiceLanguage: 'Ngôn ngữ bài gõ', duration: 'Thời lượng', minutes: 'phút', start: 'Bắt đầu', restart: 'Làm lại', finish: 'Kết thúc', words: 'từ', errors: 'lỗi',
+    practiceLanguage: 'Ngôn ngữ bài gõ', englishLanguage: 'Tiếng Anh', vietnameseLanguage: 'Tiếng Việt', duration: 'Thời lượng', minutes: 'phút', start: 'Bắt đầu', restart: 'Làm lại', finish: 'Kết thúc', words: 'từ', errors: 'lỗi',
     dailyRecommendation: 'Hãy hoàn thành đủ 12 bài học trước để có trải nghiệm luyện tập tốt nhất.', dailyReady: 'Bài luyện hôm nay đã sẵn sàng.', typeHere: 'Bắt đầu gõ tại đây…', referenceText: 'Văn bản mẫu', practiceResult: 'Kết quả luyện tập',
     basics: {
       intro: 'là kỹ thuật gõ nhanh và chính xác bằng cả mười ngón tay mà không cần nhìn xuống bàn phím.', afterCourse: 'Sau khóa học, bạn sẽ có thể:',
@@ -694,11 +694,51 @@ const PRACTICE_TEXTS: Record<PracticeLanguage, string[]> = {
   ],
 }
 
-function practiceTextForToday(language: PracticeLanguage, repeatCount: number) {
+function practiceTextForToday(language: PracticeLanguage, repeatCount: number, passageOffset: number) {
   const dayNumber = Math.floor(new Date().setHours(0, 0, 0, 0) / 86_400_000)
-  const passage = PRACTICE_TEXTS[language][dayNumber % PRACTICE_TEXTS[language].length]
+  const passages = PRACTICE_TEXTS[language]
+  const passage = passages[(dayNumber + passageOffset) % passages.length]
   return Array.from({ length: repeatCount }, () => passage).join('\n\n')
 }
+
+function groupReferenceText(targetText: string, typedText: string) {
+  const segments: { className: 'matched' | 'missed'; text: string }[] = []
+  const comparedLength = Math.min(targetText.length, typedText.length)
+
+  for (let index = 0; index < comparedLength; index += 1) {
+    const className = typedText[index] === targetText[index] ? 'matched' : 'missed'
+    const previous = segments[segments.length - 1]
+    if (previous?.className === className) previous.text += targetText[index]
+    else segments.push({ className, text: targetText[index] })
+  }
+
+  return { segments, comparedLength }
+}
+
+const PracticeInput = memo(function PracticeInput({ inputRef, language, label, running, onValueChange }: {
+  inputRef: { current: HTMLTextAreaElement | null }
+  language: PracticeLanguage
+  label: string
+  running: boolean
+  onValueChange: (value: string) => void
+}) {
+  return (
+    <label className="practice-input-label">
+      <span>{label}</span>
+      <textarea
+        ref={inputRef}
+        aria-label={label}
+        autoCapitalize="off"
+        autoCorrect="off"
+        disabled={!running}
+        lang={language}
+        onCompositionEnd={(event) => onValueChange(event.currentTarget.value)}
+        onInput={(event) => onValueChange(event.currentTarget.value)}
+        spellCheck={false}
+      />
+    </label>
+  )
+})
 
 function FreeTypingPractice({ mode, interfaceLanguage, completedLessonCount }: { mode: 'daily' | 'test'; interfaceLanguage: AppLanguage; completedLessonCount: number }) {
   const ui = UI_COPY[interfaceLanguage]
@@ -709,14 +749,17 @@ function FreeTypingPractice({ mode, interfaceLanguage, completedLessonCount }: {
   const [finished, setFinished] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(mode === 'test' ? 60 : 300)
   const [endAt, setEndAt] = useState<number | null>(null)
+  const [passageOffset, setPassageOffset] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const nextTextPendingRef = useRef(false)
   const totalSeconds = mode === 'test' ? 60 : dailyMinutes * 60
-  const targetText = practiceTextForToday(practiceLanguage, mode === 'daily' ? 12 : 3)
+  const targetText = practiceTextForToday(practiceLanguage, mode === 'daily' ? 12 : 3, passageOffset)
 
   const finishPractice = useCallback(() => {
     setRunning(false)
     setFinished(true)
     setEndAt(null)
+    nextTextPendingRef.current = true
     if (mode === 'daily') window.localStorage.setItem('typing-speed-vn-last-daily', new Date().toISOString().slice(0, 10))
   }, [mode])
 
@@ -733,6 +776,7 @@ function FreeTypingPractice({ mode, interfaceLanguage, completedLessonCount }: {
   }, [endAt, finishPractice, running])
 
   const reset = useCallback(() => {
+    if (inputRef.current) inputRef.current.value = ''
     setTyped('')
     setRunning(false)
     setFinished(false)
@@ -743,18 +787,23 @@ function FreeTypingPractice({ mode, interfaceLanguage, completedLessonCount }: {
   useEffect(() => reset(), [mode, practiceLanguage, dailyMinutes, reset])
 
   const start = () => {
+    if (nextTextPendingRef.current) {
+      nextTextPendingRef.current = false
+      setPassageOffset((current) => current + 1)
+    }
     reset()
     setRunning(true)
     setEndAt(Date.now() + totalSeconds * 1000)
     requestAnimationFrame(() => inputRef.current?.focus())
   }
 
-  const handleChange = (value: string) => {
+  const handleChange = useCallback((value: string) => {
     if (!running) return
-    const nextValue = value.slice(0, targetText.length)
+    const normalizedValue = value.normalize('NFC')
+    const nextValue = normalizedValue.slice(0, targetText.length)
     setTyped(nextValue)
-    if (nextValue.length === targetText.length) finishPractice()
-  }
+    if (normalizedValue.length >= targetText.length) finishPractice()
+  }, [finishPractice, running, targetText])
 
   const elapsedSeconds = totalSeconds - secondsLeft
   const scoringSeconds = Math.max(1, elapsedSeconds)
@@ -764,6 +813,7 @@ function FreeTypingPractice({ mode, interfaceLanguage, completedLessonCount }: {
   const accuracy = typed.length === 0 ? 100 : Math.round((correctCharacters / typed.length) * 100)
   const netWpm = Math.max(0, Math.round(grossWpm - errors / (scoringSeconds / 60)))
   const wordCount = typed.trim() ? typed.trim().split(/\s+/).length : 0
+  const { segments: referenceSegments, comparedLength } = groupReferenceText(targetText, typed)
 
   return (
     <section className="free-practice" aria-labelledby={`${mode}-title`}>
@@ -776,16 +826,18 @@ function FreeTypingPractice({ mode, interfaceLanguage, completedLessonCount }: {
       {mode === 'daily' && completedLessonCount >= 12 && <div className="practice-notice ready" role="status"><span aria-hidden="true">✓</span>{ui.dailyReady}</div>}
 
       <div className="practice-toolbar">
-        <label><span>{ui.practiceLanguage}</span><select disabled={running} onChange={(event) => setPracticeLanguage(event.target.value as PracticeLanguage)} value={practiceLanguage}><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label>
+        <label><span>{ui.practiceLanguage}</span><select disabled={running} onChange={(event) => { nextTextPendingRef.current = false; setPassageOffset(0); setPracticeLanguage(event.target.value as PracticeLanguage) }} value={practiceLanguage}><option value="vi">{ui.vietnameseLanguage}</option><option value="en">{ui.englishLanguage}</option></select></label>
         {mode === 'daily' && <label><span>{ui.duration}</span><select disabled={running} onChange={(event) => setDailyMinutes(Number(event.target.value) as 5 | 10)} value={dailyMinutes}><option value={5}>5 {ui.minutes}</option><option value={10}>10 {ui.minutes}</option></select></label>}
         <button className="primary-button" type="button" onClick={start}>{typed || finished ? ui.restart : ui.start}</button>
         {running && <button className="secondary-button" type="button" onClick={finishPractice}>{ui.finish}</button>}
       </div>
 
       <div className="practice-reference" aria-label={ui.referenceText}>
-        {targetText.split('').map((character, index) => <span className={index < typed.length ? (typed[index] === character ? 'matched' : 'missed') : index === typed.length ? 'current' : ''} key={index}>{character}</span>)}
+        {referenceSegments.map((segment, index) => <span className={segment.className} key={`${segment.className}-${index}`}>{segment.text}</span>)}
+        {comparedLength < targetText.length && <span className="current">{targetText[comparedLength]}</span>}
+        {targetText.slice(comparedLength + 1)}
       </div>
-      <label className="practice-input-label"><span>{ui.typeHere}</span><textarea ref={inputRef} disabled={!running} onChange={(event) => handleChange(event.target.value)} spellCheck={false} value={typed} /></label>
+      <PracticeInput inputRef={inputRef} label={ui.typeHere} language={practiceLanguage} onValueChange={handleChange} running={running} />
 
       <section className={`practice-results ${finished ? 'is-finished' : ''}`} aria-label={ui.practiceResult} aria-live="polite">
         <div><span>{ui.timeUsed}</span><strong>{formatTime(elapsedSeconds)}</strong></div>
