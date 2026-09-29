@@ -23,6 +23,23 @@ body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: hidden; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 
+.skip-link {
+  position: fixed;
+  z-index: 20;
+  top: 10px;
+  left: 10px;
+  padding: 10px 14px;
+  transform: translateY(-160%);
+  border-radius: 3px;
+  background: #101b2d;
+  color: white;
+  font-size: .8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.skip-link:focus { transform: translateY(0); }
+.course-pane:focus { outline: none; }
+
 .app-shell {
   min-height: 100vh;
   padding: clamp(14px, 3vw, 34px);
@@ -146,6 +163,16 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .lesson-note > span { display: grid; flex: none; width: 23px; height: 23px; place-items: center; border-radius: 50%; background: var(--brand-soft); color: var(--brand); font-family: Georgia, serif; font-weight: 700; }
 .lesson-note p { margin: 0; font-size: .76rem; line-height: 1.45; }
 
+.product-intro { max-width: 900px; margin: 42px auto 0; padding-top: 30px; border-top: 1px solid var(--line); }
+.product-intro > h2 { max-width: 680px; }
+.product-intro-lead { max-width: 760px; margin: 10px 0 22px; color: var(--muted); font-size: .86rem; line-height: 1.65; }
+.product-intro-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.product-intro-grid article { padding: 17px; border: 1px solid var(--line); background: white; }
+.product-intro-grid h3 { margin: 0 0 8px; color: #203c5d; font-size: .86rem; line-height: 1.35; }
+.product-intro-grid p { margin: 0; color: #5d6e84; font-size: .76rem; line-height: 1.58; }
+.product-intro-actions { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 9px; }
+.product-intro-actions .secondary-button { min-height: 38px; }
+
 .basics-card { min-height: 590px; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; border: 1px solid var(--line); background: white; }
 .basics-header { padding: 15px 24px; background: var(--brand); color: white; }
 .basics-header p { margin: 0 0 3px; font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; opacity: .78; }
@@ -224,6 +251,9 @@ h2 { font-size: clamp(1.25rem, 2.2vw, 1.65rem); }
 .typing-card { min-height: 150px; padding: 26px 28px 18px; display: grid; align-content: center; border: 0; outline: none; }
 .typing-card.long-content { min-height: 195px; }
 .typing-card:focus-visible { box-shadow: inset 0 0 0 2px rgba(49, 90, 198, .24); }
+.typing-feedback { min-height: 22px; margin: 12px 0 0; display: flex; align-items: center; justify-content: center; gap: 7px; color: transparent; font-size: .72rem; font-weight: 700; line-height: 1.4; text-align: center; }
+.typing-feedback.is-error { color: var(--danger); }
+.typing-feedback span { display: inline-grid; width: 18px; height: 18px; flex: none; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: .75rem; line-height: 1; }
 
 .typing-line {
   color: #758399;
@@ -414,6 +444,7 @@ button:focus-visible { outline: 3px solid rgba(49, 90, 198, .28); outline-offset
   .course-header:not(.focus-header) { min-height: 108px; align-items: flex-start; flex-direction: column; justify-content: center; gap: 8px; }
   .top-nav { width: 100%; justify-content: flex-start; overflow-x: auto; padding-bottom: 2px; }
   .basics-columns, .basics-position-page { grid-template-columns: 1fr; }
+  .product-intro-grid { grid-template-columns: 1fr; }
   .basics-hero { width: 170px; height: 170px; }
   .basics-hero strong { font-size: 3.7rem; }
   .lesson-tabs { width: 100%; max-width: 100%; overflow-x: auto; grid-template-columns: repeat(12, 42px); }
@@ -442,6 +473,7 @@ button:focus-visible { outline: 3px solid rgba(49, 90, 198, .28); outline-offset
   .section-title-row { align-items: flex-start; flex-direction: column; gap: 13px; }
   .lesson-summary { margin-top: 24px; }
   .lesson-summary h2 { overflow-wrap: anywhere; }
+  .product-intro { margin-top: 32px; padding-top: 24px; }
   .exercise-list button { grid-template-columns: 27px 1fr auto; }
   .exercise-list button > span:nth-child(3) { display: none; }
   .typing-card { min-height: 170px; padding: 19px 17px; }

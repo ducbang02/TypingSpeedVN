@@ -62,7 +62,7 @@ const UI_COPY = {
     lessonList: 'Lesson list', comingSoon: 'Coming soon', lesson: 'Lesson', touchTypingBasics: 'Touch Typing Basics', touchTypingSummary: 'Ten-finger typing technique',
     hint: 'Tip:', lessonHint: 'complete the exercises in order so your fingers learn each position before you increase speed.',
     cancel: 'Cancel', next: 'Next', again: 'Again', startNewKeys: 'Start New Keys', startKeyDrill: 'Start Key Drill',
-    keyboardWarning: 'Switch your keyboard to EN for the best experience.', newKeysAria: 'New keys and their matching fingers',
+    keyboardWarning: 'Switch your keyboard to EN for the best experience.', wrongKey: 'That key does not match. Check the highlighted key and try again.', newKeysAria: 'New keys and their matching fingers',
     timeUp: 'Time is up', completed: 'Completed', timedOut: 'The drill ended automatically.', resultsReady: 'Your results are ready in the panel.',
     keyInstructionTop: 'Type the key sequences and follow the highlighted key.', keyInstructionBottom: 'Use the on-screen keyboard and hands for hints when needed.',
     sampleParagraph: 'Sample paragraph', sampleText: 'Sample text',
@@ -105,7 +105,7 @@ const UI_COPY = {
     lessonList: 'Danh sách bài học', comingSoon: 'Sắp ra mắt', lesson: 'Bài', touchTypingBasics: 'Kỹ thuật gõ 10 ngón', touchTypingSummary: 'Nền tảng gõ bằng mười ngón',
     hint: 'Gợi ý:', lessonHint: 'hoàn thành theo thứ tự để ngón tay quen vị trí trước khi tăng tốc.',
     cancel: 'Hủy', next: 'Tiếp theo', again: 'Làm lại', startNewKeys: 'Bắt đầu Phím mới', startKeyDrill: 'Bắt đầu Luyện phím',
-    keyboardWarning: 'Hãy chuyển bàn phím sang EN để có trải nghiệm tốt hơn.', newKeysAria: 'Các phím mới và ngón tay tương ứng',
+    keyboardWarning: 'Hãy chuyển bàn phím sang EN để có trải nghiệm tốt hơn.', wrongKey: 'Phím vừa nhấn chưa đúng. Hãy nhìn phím được làm nổi bật và thử lại.', newKeysAria: 'Các phím mới và ngón tay tương ứng',
     timeUp: 'Hết giờ', completed: 'Hoàn thành', timedOut: 'Bài luyện đã tự động kết thúc.', resultsReady: 'Kết quả đã sẵn sàng ở bảng bên phải.',
     keyInstructionTop: 'Gõ các chuỗi phím theo phím đang được làm nổi bật.', keyInstructionBottom: 'Nhìn bàn phím và bàn tay trên màn hình để xem gợi ý khi cần.',
     sampleParagraph: 'Đoạn văn mẫu', sampleText: 'Văn bản mẫu',
@@ -142,6 +142,33 @@ const UI_COPY = {
       ],
       ready: 'Sẵn sàng rồi!', readyText: 'Bài tiếp theo sẽ giới thiệu tám phím đầu tiên: A S D F · J K L ;',
     },
+  },
+} as const
+
+const PRODUCT_INTRO = {
+  en: {
+    label: 'Learn, practise, measure',
+    title: 'Build accurate typing habits before increasing speed',
+    lead: 'Typing Speed VN combines a structured 12-lesson course with daily practice and a focused one-minute speed test. Your progress stays on this device and no account is required.',
+    sections: [
+      { title: 'Understand WPM and accuracy', text: 'WPM estimates how many standard words you type per minute. Accuracy shows how reliably you reproduce the reference text, so it should improve before raw speed.' },
+      { title: 'Learn touch typing step by step', text: 'Begin on the home row, learn the finger assigned to each key, then move through key, word, sentence, paragraph, and full-text drills.' },
+      { title: 'Practise Vietnamese and English', text: 'Daily Practice and the one-minute test include both languages. Vietnamese text is Unicode-normalized to work more reliably with common input methods.' },
+    ],
+    testAction: 'Take the 1-minute test',
+    dailyAction: 'Open Daily Practice',
+  },
+  vi: {
+    label: 'Học đúng, luyện đều, đo tiến bộ',
+    title: 'Xây độ chính xác trước khi tăng tốc độ gõ',
+    lead: 'Typing Speed VN kết hợp lộ trình 12 bài, luyện tập mỗi ngày và bài test tập trung trong một phút. Tiến độ được lưu trên thiết bị và bạn không cần tạo tài khoản.',
+    sections: [
+      { title: 'Hiểu đúng WPM và độ chính xác', text: 'WPM ước tính số từ tiêu chuẩn bạn gõ trong một phút. Độ chính xác cho biết bạn nhập đúng văn bản mẫu đến đâu, vì vậy hãy cải thiện độ chính xác trước khi cố gõ nhanh.' },
+      { title: 'Luyện gõ 10 ngón từng bước', text: 'Bắt đầu ở hàng phím cơ sở, học ngón tay tương ứng với từng phím rồi tiến dần qua luyện phím, từ, câu, đoạn văn và văn bản dài.' },
+      { title: 'Luyện tiếng Việt và tiếng Anh', text: 'Luyện tập mỗi ngày và Test 1 phút đều có hai ngôn ngữ. Văn bản tiếng Việt được chuẩn hóa Unicode để hoạt động ổn định hơn với các bộ gõ phổ biến.' },
+    ],
+    testAction: 'Làm Test 1 phút',
+    dailyAction: 'Mở Luyện mỗi ngày',
   },
 } as const
 const LESSON_1_KEY_GROUPS = ['aa ', 'dd ', 'ss ', 'ff ', 'jj ', 'kk ', 'll ', ';; ']
@@ -916,6 +943,7 @@ export default function App() {
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
 
   const ui = UI_COPY[language]
+  const productIntro = PRODUCT_INTRO[language]
   const activeLesson = LESSONS[activeLessonId]
   const drills = activeLesson.drills
   const activeDrill = drills.find((drill) => drill.id === activeDrillId) ?? drills[0]
@@ -1183,18 +1211,20 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <>
+      <a className="skip-link" href="#main-content">{language === 'vi' ? 'Đi tới nội dung chính' : 'Skip to main content'}</a>
+      <div className="app-shell">
       <div className={`program-window ${screen === 'drill' ? 'focus-mode' : ''}`}>
-        <main className="course-pane">
+        <main className="course-pane" id="main-content" tabIndex={-1}>
           <header className={`course-header ${screen === 'drill' || screen === 'basics' ? 'focus-header' : ''}`}>
             <button className="brand" type="button" onClick={openLesson} aria-label={`Typing Speed VN — ${ui.openCourse}`}>
               <span className="brand-mark" aria-hidden="true">TS</span><span>Typing Speed <strong>VN</strong></span>
             </button>
             {screen !== 'drill' && screen !== 'basics' ? (
               <nav className="top-nav" aria-label={ui.menu}>
-                <button className={screen === 'lesson' ? 'active' : ''} type="button" onClick={openLesson}>{ui.navCourse}</button>
-                <button className={screen === 'daily' ? 'active' : ''} type="button" onClick={() => setScreen('daily')}>{ui.navDaily}</button>
-                <button className={screen === 'test' ? 'active' : ''} type="button" onClick={() => setScreen('test')}>{ui.navTest}</button>
+                <button aria-current={screen === 'lesson' ? 'page' : undefined} className={screen === 'lesson' ? 'active' : ''} type="button" onClick={openLesson}>{ui.navCourse}</button>
+                <button aria-current={screen === 'daily' ? 'page' : undefined} className={screen === 'daily' ? 'active' : ''} type="button" onClick={() => setScreen('daily')}>{ui.navDaily}</button>
+                <button aria-current={screen === 'test' ? 'page' : undefined} className={screen === 'test' ? 'active' : ''} type="button" onClick={() => setScreen('test')}>{ui.navTest}</button>
                 <button className={screen === 'settings' ? 'active icon-nav' : 'icon-nav'} type="button" onClick={() => setScreen('settings')} aria-label={ui.settings} title={ui.settings}>⚙</button>
                 <button className={screen === 'about' ? 'active icon-nav' : 'icon-nav'} type="button" onClick={() => setScreen('about')} aria-label={ui.about} title={ui.about}>i</button>
                 <a href="https://camnangsinhvien.site" rel="noreferrer">{ui.backToSite} ↗</a>
@@ -1247,6 +1277,20 @@ export default function App() {
                 })}
               </ol>
               <div className="lesson-note"><span aria-hidden="true">i</span><p><strong>{ui.hint}</strong> {ui.lessonHint}</p></div>
+              {activeLessonId === 1 && (
+                <section className="product-intro" aria-labelledby="product-intro-title">
+                  <p className="eyebrow">{productIntro.label}</p>
+                  <h2 id="product-intro-title">{productIntro.title}</h2>
+                  <p className="product-intro-lead">{productIntro.lead}</p>
+                  <div className="product-intro-grid">
+                    {productIntro.sections.map((item) => <article key={item.title}><h3>{item.title}</h3><p>{item.text}</p></article>)}
+                  </div>
+                  <div className="product-intro-actions">
+                    <button className="primary-button" type="button" onClick={() => setScreen('test')}>{productIntro.testAction}</button>
+                    <button className="secondary-button" type="button" onClick={() => setScreen('daily')}>{productIntro.dailyAction}</button>
+                  </div>
+                </section>
+              )}
             </section>
           )}
 
@@ -1364,6 +1408,7 @@ export default function App() {
                         {activeDrill.content.split('').map((character, index) => <span className={`${character === ' ' ? 'space-char' : ''} ${index < position ? 'typed' : index === position ? 'current-char' : ''}`} key={`${character}-${index}`}>{character === ' ' ? '\u00a0' : character}</span>)}
                       </div>
                     )}
+                    {!isComplete && <p className={`typing-feedback ${status === 'incorrect' ? 'is-error' : ''}`} role="status" aria-live="polite">{status === 'incorrect' && <><span aria-hidden="true">×</span>{ui.wrongKey}</>}</p>}
                   </section>
                   {showGuides && activeDrillId !== 6 && (
                     <section className="guide-card" aria-label={ui.keyboardHands}>
@@ -1430,6 +1475,7 @@ export default function App() {
           </>
         </aside>}
       </div>
-    </div>
+      </div>
+    </>
   )
 }
